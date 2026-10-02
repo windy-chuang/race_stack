@@ -1,0 +1,35 @@
+ibr_planner:
+  ros__parameters:
+    # topics: defaults drive the second car of the gym bridge (num_agent: 2)
+    ego_odom_topic: /opp_racecar/odom
+    opp_odom_topic: /opp_racecar/opp_odom
+    drive_topic: /opp_drive
+    global_waypoints_topic: /global_waypoints
+    racecar_version: SIM # picks stack_master/config/<racecar_version>/l1_params.yaml
+
+    # loop rates
+    plan_rate_hz: 10.0 # IBR solve rate, check /ibr/solve_time stays below 1/plan_rate_hz
+    control_rate_hz: 40.0
+    plan_timeout_s: 0.5 # stop the car if no plan succeeded for this long
+
+    # IBR game
+    dt: 0.1 # [s] time between trajectory points
+    n_steps: 20 # horizon = n_steps * dt
+    n_game_iters: 2
+    n_sqp_iters: 2 # 3 doubles the solve time for no measurable gain (AirSim default was 3)
+    blocking: false
+    solver: "" # empty = cvxpy default, e.g. CLARABEL / ECOS
+
+    # cars (index 0 = this car, 1 = the other car)
+    ego_v_max: 6.0 # [m/s], also capped by the raceline speed profile
+    ego_r_coll: 0.3 # [m]
+    ego_r_safe: 0.5 # [m]
+    opp_v_max: 6.0
+    opp_r_coll: 0.3
+    opp_r_safe: 0.5
+    opp_v_from_odom: true # model opponent v_max as its measured speed * margin
+    opp_v_margin: 1.1
+    opp_v_min: 1.0
+
+    # tracking
+    path_extension_m: 6.0 # raceline appended after the IBR horizon for the PP lookahead

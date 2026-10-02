@@ -1,0 +1,8 @@
+<launch>
+    <arg name="param_file" default="$(find-pkg-share ibr_planner)/config/ibr_planner_params.yaml" />
+
+    <node pkg="ibr_planner" exec="ibr_planner" name="ibr_planner" output="screen">
+        <param from="$(var param_file)" />
+    </node>
+
+</launch>

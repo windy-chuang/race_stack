@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ibr_planner</name>
+  <version>0.0.0</version>
+  <description>Iterative Best Response (IBR) planner, ported from the AirSim NeurIPS 2019 drone racing baseline</description>
+  <maintainer email="ychuang@ethz.ch">ychuang</maintainer>
+  <license>MIT</license>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <exec_depend>ros2launch</exec_depend>
+  <exec_depend>controller</exec_depend>
+  <exec_depend>stack_master</exec_depend>
+  <exec_depend>f110_msgs</exec_depend>
+  <exec_depend>ackermann_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <!-- cvxpy is not a rosdep key: pip install "cvxpy>=1.4,<1.6"
+       (cvxpy 1.7 pulls in numpy 2 / scipy 1.13+, which break ROS Humble and scikit-learn) -->
+  <depend>rclpy</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
