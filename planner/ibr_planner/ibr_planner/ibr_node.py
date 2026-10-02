@@ -192,7 +192,7 @@ class IBRNode(Node):
         seg_v = np.linalg.norm(np.diff(pts, axis=0), axis=1) / dt
         v = np.concatenate(([seg_v[0]], seg_v))
 
-        idx_end = track.frame_at(pts[-1])[0]
+        idx_end = self.planner.last_end_idx
         n_ext = int(self.path_extension / WAYPOINT_SPACING)
         ext_idx = (idx_end + 1 + np.arange(n_ext)) % track.n_points
         ext_v = [self.planner.speed_limit(0, i) for i in ext_idx]

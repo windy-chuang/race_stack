@@ -35,13 +35,31 @@ class Track2D:
         self.d_right = np.asarray(d_right, dtype=float)
         self.v_ref = np.asarray(v_ref, dtype=float)
         self.n_points = len(self.centers)
+        self.spacing = float(np.median(np.linalg.norm(np.diff(self.centers, axis=0), axis=1)))
 
-    def frame_at(self, p):
+    def frame_at(self, p, near=None, behind_m=1.0, ahead_m=2.0):
         """Closest track frame to point p.
+
+        With `near` (a track index), only frames from behind_m before to ahead_m after `near` are
+        searched. A global search can snap to another part of the track that passes close by.
         :return: index, center, tangent, normal, d_left, d_right
         """
-        i = int(np.argmin(np.sum((self.centers - p[:2]) ** 2, axis=1)))
+        if near is None:
+            i = int(np.argmin(np.sum((self.centers - p[:2]) ** 2, axis=1)))
+        else:
+            window = np.arange(-int(behind_m / self.spacing), int(ahead_m / self.spacing) + 1)
+            candidates = (near + window) % self.n_points
+            i = int(candidates[np.argmin(np.sum((self.centers[candidates] - p[:2]) ** 2, axis=1))])
         return i, self.centers[i], self.tangents[i], self.normals[i], self.d_left[i], self.d_right[i]
+
+    def frames_along(self, trajectory, start_idx):
+        """Track index of every trajectory point, searching forward from the previous point."""
+        idxs = []
+        near = start_idx
+        for p in trajectory:
+            near = self.frame_at(p, near=near)[0]
+            idxs.append(near)
+        return idxs
 
 
 class IBRPlanner:
@@ -84,6 +102,10 @@ class IBRPlanner:
         self.n_relaxations = 0
         self.solve_time = 0.0
         self.last_trajectories = None
+        self.last_end_idx = None  # track index of the last point of the ego trajectory
+
+        # track index of each car at the last call, used to search frames locally
+        self._start_idx = [None, None]
 
         self._build_problems()
 
@@ -119,7 +141,8 @@ class IBRPlanner:
 
         lateral = cp.sum(cp.multiply(par["normals"], p), axis=1) - par["lat_c"]
         track_constraints = [lateral <= par["upper"], lateral >= par["lower"]]
-        track_obj = decay @ (cp.pos(lateral - par["upper"]) + cp.pos(par["lower"] - lateral))
+        # no decay here: a decaying weight makes leaving the track almost free late in the horizon
+        track_obj = cp.sum(cp.pos(lateral - par["upper"]) + cp.pos(par["lower"] - lateral))
 
         dist = par["beta_opp"] - cp.sum(cp.multiply(par["beta"], p), axis=1)
         nc_constraints = [dist >= par["d_coll"]]
@@ -151,14 +174,36 @@ class IBRPlanner:
         v_ref = self.track.v_ref[track_idx]
         return min(v_max, v_ref) if v_ref > 0.0 else v_max
 
-    def init_trajectory(self, i_car, p_0):
-        """Initial guess: follow the track tangent at the speed limit."""
+    def update_start_index(self, i_car, p):
+        """Track index of car i_car, searched near its index at the last call."""
+        idx_global = self.track.frame_at(p)[0]
+        hint = self._start_idx[i_car]
+        if hint is None:
+            idx = idx_global
+        else:
+            idx = self.track.frame_at(p, near=hint, behind_m=2.0, ahead_m=10.0)[0]
+            # fall back to the global search if the car jumped, e.g. after a reset in the sim
+            dist_local = np.linalg.norm(self.track.centers[idx] - p[:2])
+            dist_global = np.linalg.norm(self.track.centers[idx_global] - p[:2])
+            if dist_local > dist_global + 1.0:
+                idx = idx_global
+        self._start_idx[i_car] = idx
+        return idx
+
+    def init_trajectory(self, i_car, p_0, start_idx=None):
+        """Initial guess: move along the raceline at the speed limit, keeping the current lateral offset."""
+        track = self.track
+        if start_idx is None:
+            start_idx = track.frame_at(p_0)[0]
+        r = self.car_params[i_car]["r_coll"]
+        d_0 = float(track.normals[start_idx] @ (p_0[:2] - track.centers[start_idx]))
         trajectory = np.zeros(shape=(self.n_steps, 2))
-        p = np.array(p_0[:2], dtype=float)
+        pos = float(start_idx)  # fractional track index
         for k in range(self.n_steps):
-            idx, _, t, _, _, _ = self.track.frame_at(p)
-            p = p + self.dt * self.speed_limit(i_car, idx) * t
-            trajectory[k, :] = p
+            pos += self.speed_limit(i_car, int(pos) % track.n_points) * self.dt / track.spacing
+            j = int(round(pos)) % track.n_points
+            d = np.clip(d_0, -max(track.d_right[j] - r, 0.0), max(track.d_left[j] - r, 0.0))
+            trajectory[k, :] = track.centers[j] + d * track.normals[j]
         return trajectory
 
     def _solve(self, prob):
@@ -182,8 +227,10 @@ class IBRPlanner:
         lat_c = np.zeros(N)
         upper = np.zeros(N)
         lower = np.zeros(N)
-        for k in range(N):
-            idx, c, t[k, :], n[k, :], d_left, d_right = self.track.frame_at(traj_ego[k, :])
+        track = self.track
+        for k, idx in enumerate(track.frames_along(traj_ego, self._start_idx[i_ego])):
+            c, t[k, :], n[k, :] = track.centers[idx], track.tangents[idx], track.normals[idx]
+            d_left, d_right = track.d_left[idx], track.d_right[idx]
             step[k] = self.speed_limit(i_ego, idx) * self.dt
             lat_c[k] = n[k, :].dot(c)
             upper[k] = max(d_left - r_ego, 0.0)
@@ -234,7 +281,8 @@ class IBRPlanner:
         self.n_fallbacks = 0
         self.n_relaxations = 0
         t0 = time.time()
-        trajectories = [self.init_trajectory(i, state[i, :]) for i in (0, 1)]
+        trajectories = [self.init_trajectory(i, state[i, :], self.update_start_index(i, state[i, :]))
+                        for i in (0, 1)]
         for _ in range(self.n_game_iters - 1):
             for i in (i_ego, (i_ego + 1) % 2):
                 for _ in range(self.n_sqp_iters - 1):
@@ -244,11 +292,12 @@ class IBRPlanner:
             trajectories[i_ego] = self.best_response(i_ego, state, trajectories)
         self.solve_time = time.time() - t0
         self.last_trajectories = trajectories
+        self.last_end_idx = self.track.frames_along(trajectories[i_ego], self._start_idx[i_ego])[-1]
         return trajectories[i_ego]
 
-    def truncate(self, p_i, trajectory):
+    def truncate(self, p_i, trajectory, i_car=0):
         """Index of the first trajectory point that is ahead of p_i along the track tangent."""
-        _, _, t, _, _, _ = self.track.frame_at(p_i)
+        t = self.track.tangents[self._start_idx[i_car]]
         truncate_distance = 0.01
         for k in range(len(trajectory)):
             if t.dot(trajectory[k, :] - p_i[:2]) > truncate_distance:

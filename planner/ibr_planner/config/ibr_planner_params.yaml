@@ -21,10 +21,10 @@ ibr_planner:
     solver: "" # empty = cvxpy default, e.g. CLARABEL / ECOS
 
     # cars (index 0 = this car, 1 = the other car)
-    ego_v_max: 6.0 # [m/s], also capped by the raceline speed profile
+    ego_v_max: 3.0 # [m/s], also capped by the raceline speed profile
     ego_r_coll: 0.3 # [m]
     ego_r_safe: 0.5 # [m]
-    opp_v_max: 6.0
+    opp_v_max: 4.0
     opp_r_coll: 0.3
     opp_r_safe: 0.5
     opp_v_from_odom: true # model opponent v_max as its measured speed * margin
