@@ -51,9 +51,9 @@ class FTG_Controller(Node):
         self.velocity = 0
         self.scan = None
 
-        self.best_pnt = self.create_publisher(Marker, '/best_points/marker', 10)
-        self.scan_pub = self.create_publisher(MarkerArray, '/scan_proc/markers', 10)
-        self.best_gap = self.create_publisher(MarkerArray, '/best_gap/markers', 10)
+        self.best_pnt = self.create_publisher(Marker, 'best_points/marker', 10)
+        self.scan_pub = self.create_publisher(MarkerArray, 'scan_proc/markers', 10)
+        self.best_gap = self.create_publisher(MarkerArray, 'best_gap/markers', 10)
 
     def _preprocess_lidar(self, ranges) -> np.ndarray:
         """ 

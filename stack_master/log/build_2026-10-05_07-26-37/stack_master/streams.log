@@ -1,0 +1,61 @@
+[0.837s] Invoking command in '/home/minze/ws/src/race_stack/stack_master': PYTHONPATH=/home/minze/ws/src/race_stack/stack_master/build/stack_master/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/stack_master build --build-base /home/minze/ws/src/race_stack/stack_master/build/stack_master/build install --record /home/minze/ws/src/race_stack/stack_master/build/stack_master/install.log --install-scripts $base/lib/stack_master --single-version-externally-managed install_data
+[1.135s] running egg_info
+[1.137s] creating build/stack_master/stack_master.egg-info
+[1.137s] writing build/stack_master/stack_master.egg-info/PKG-INFO
+[1.139s] writing dependency_links to build/stack_master/stack_master.egg-info/dependency_links.txt
+[1.141s] writing entry points to build/stack_master/stack_master.egg-info/entry_points.txt
+[1.142s] writing requirements to build/stack_master/stack_master.egg-info/requires.txt
+[1.142s] writing top-level names to build/stack_master/stack_master.egg-info/top_level.txt
+[1.143s] writing manifest file 'build/stack_master/stack_master.egg-info/SOURCES.txt'
+[1.153s] reading manifest file 'build/stack_master/stack_master.egg-info/SOURCES.txt'
+[1.155s] adding license file 'LICENSE'
+[1.155s] writing manifest file 'build/stack_master/stack_master.egg-info/SOURCES.txt'
+[1.155s] running build
+[1.156s] running build_py
+[1.157s] creating /home/minze/ws/src/race_stack/stack_master/build/stack_master/build
+[1.157s] creating /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib
+[1.157s] creating /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master
+[1.158s] copying stack_master/__init__.py -> /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master
+[1.158s] copying stack_master/global_parameter_node.py -> /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master
+[1.159s] copying stack_master/parameter_event_handler.py -> /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master
+[1.161s] running install
+[1.161s] running install_lib
+[1.162s] creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master
+[1.162s] copying /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master/__init__.py -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master
+[1.163s] copying /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master/global_parameter_node.py -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master
+[1.167s] copying /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master/parameter_event_handler.py -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master
+[1.169s] byte-compiling /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master/__init__.py to __init__.cpython-310.pyc
+[1.171s] byte-compiling /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master/global_parameter_node.py to global_parameter_node.cpython-310.pyc
+[1.174s] byte-compiling /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master/parameter_event_handler.py to parameter_event_handler.cpython-310.pyc
+[1.175s] running install_data
+[1.177s] creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/ament_index
+[1.177s] creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/ament_index/resource_index
+[1.178s] creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/ament_index/resource_index/packages
+[1.179s] copying resource/stack_master -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/ament_index/resource_index/packages
+[1.179s] copying package.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master
+[1.181s] creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+[1.181s] copying launch/base_system_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+[1.182s] copying launch/head_to_head_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+[1.184s] copying launch/teleop_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+[1.186s] copying launch/planner_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+[1.187s] copying launch/test_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+[1.188s] copying launch/time_trials_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+[1.191s] copying launch/mapping_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+[1.192s] creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch/subsystems
+[1.193s] creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+[1.194s] copying config/state_machine_params.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+[1.195s] copying config/sensors.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+[1.196s] copying config/global_params.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+[1.198s] copying config/opponent_tracker_params.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+[1.199s] copying config/mux.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+[1.201s] creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+[1.201s] copying config/NUC2/slam/f110_2d.lua -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+[1.203s] copying config/NUC2/slam/f110_2d_loc.lua -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+[1.204s] copying config/NUC2/l1_params.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+[1.208s] copying config/NUC2/joy_teleop.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+[1.212s] copying config/NUC2/vesc.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+[1.215s] creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC5
+[1.215s] copying config/NUC5/slam/f110_2d.lua -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC5
+[1.217s] copying config/NUC5/slam/f110_2d_loc.lua -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC5
+[1.218s] error: can't copy 'config/NUC5/pacejka/dubi': doesn't exist or not a regular file
+[1.240s] Invoked command in '/home/minze/ws/src/race_stack/stack_master' returned '1': PYTHONPATH=/home/minze/ws/src/race_stack/stack_master/build/stack_master/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/stack_master build --build-base /home/minze/ws/src/race_stack/stack_master/build/stack_master/build install --record /home/minze/ws/src/race_stack/stack_master/build/stack_master/install.log --install-scripts $base/lib/stack_master --single-version-externally-managed install_data

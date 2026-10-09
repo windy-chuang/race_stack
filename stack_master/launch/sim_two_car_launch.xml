@@ -1,0 +1,41 @@
+<launch>
+  <arg name="map_name" default="latest" />
+  <arg name="ego_planner" default="spliner" description="spliner / ibr / none" />
+  <arg name="opp_planner" default="spliner"    description="spliner / ibr / none" />
+  <arg name="ego_ctrl" default="PP" />
+  <arg name="opp_ctrl" default="PP" />
+  <let name="map_path" value="$(find-pkg-share stack_master)/maps/$(var map_name)" />
+
+  <!-- shared -->
+  <include file="$(find-pkg-share f1tenth_gym_ros)/launch/gym_bridge_launch.py">
+    <arg name="map_yaml_path" value="$(var map_path)/$(var map_name).yaml" />
+    <arg name="sim_config" value="$(find-pkg-share stack_master)/config/SIM/sim_two_car.yaml" />
+  </include>
+  <node pkg="stack_master" name="global_parameters" exec="global_parameter_node">
+    <param name="racecar_version" value="SIM" />
+    <param name="sim" value="True" />
+    <param name="map_path" value="$(var map_path)" />
+    <param name="use_sim_time" value="True" />
+  </node>
+  <include file="$(find-pkg-share global_planner)/launch/global_trajectory_publisher_launch.xml">
+    <arg name="map_path" value="$(var map_path)" />
+  </include>
+  <node pkg="sector_tuner" name="sector_tuner" exec="sector_tuner">
+    <param name="map_name" value="$(var map_name)" />
+    <param from="$(var map_path)/speed_scaling.yaml" />
+  </node>
+
+  <!-- per car -->
+  <include file="$(find-pkg-share stack_master)/launch/car_stack_launch.xml">
+    <arg name="ns" value="ego" />
+    <arg name="planner" value="$(var ego_planner)" />
+    <arg name="ctrl_algo" value="$(var ego_ctrl)" />
+    <arg name="map_name" value="$(var map_name)" />
+  </include>
+  <include file="$(find-pkg-share stack_master)/launch/car_stack_launch.xml">
+    <arg name="ns" value="opp" />
+    <arg name="planner" value="$(var opp_planner)" />
+    <arg name="ctrl_algo" value="$(var opp_ctrl)" />
+    <arg name="map_name" value="$(var map_name)" />
+  </include>
+</launch>

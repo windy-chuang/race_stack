@@ -166,7 +166,8 @@ class OvertakingSectorSlicer(Node):
                                             'end':self.sector_pnts[i+1]
                                             }
             dict_file['Overtaking_sector' + str(i)].update({'ot_flag': False})
-        ros_yaml_preamble = {'ot_interpolator': {'ros__parameters': dict_file}}
+            ros_yaml_preamble = {'/**/ot_interpolator': {'ros__parameters': dict_file}}
+
         
         #Save yaml to the respective maps folder 
         yaml_path = os.path.join(self.yaml_dir, 'ot_sectors.yaml')

@@ -1,0 +1,59 @@
+running egg_info
+creating build/stack_master/stack_master.egg-info
+writing build/stack_master/stack_master.egg-info/PKG-INFO
+writing dependency_links to build/stack_master/stack_master.egg-info/dependency_links.txt
+writing entry points to build/stack_master/stack_master.egg-info/entry_points.txt
+writing requirements to build/stack_master/stack_master.egg-info/requires.txt
+writing top-level names to build/stack_master/stack_master.egg-info/top_level.txt
+writing manifest file 'build/stack_master/stack_master.egg-info/SOURCES.txt'
+reading manifest file 'build/stack_master/stack_master.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'build/stack_master/stack_master.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/minze/ws/src/race_stack/stack_master/build/stack_master/build
+creating /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib
+creating /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master
+copying stack_master/__init__.py -> /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master
+copying stack_master/global_parameter_node.py -> /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master
+copying stack_master/parameter_event_handler.py -> /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master
+running install
+running install_lib
+creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master
+copying /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master/__init__.py -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master
+copying /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master/global_parameter_node.py -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master
+copying /home/minze/ws/src/race_stack/stack_master/build/stack_master/build/lib/stack_master/parameter_event_handler.py -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master
+byte-compiling /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master/__init__.py to __init__.cpython-310.pyc
+byte-compiling /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master/global_parameter_node.py to global_parameter_node.cpython-310.pyc
+byte-compiling /home/minze/ws/src/race_stack/stack_master/install/stack_master/lib/python3.10/site-packages/stack_master/parameter_event_handler.py to parameter_event_handler.cpython-310.pyc
+running install_data
+creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/ament_index
+creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/ament_index/resource_index
+creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/ament_index/resource_index/packages
+copying resource/stack_master -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/ament_index/resource_index/packages
+copying package.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master
+creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+copying launch/base_system_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+copying launch/head_to_head_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+copying launch/teleop_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+copying launch/planner_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+copying launch/test_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+copying launch/time_trials_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+copying launch/mapping_launch.xml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch
+creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/launch/subsystems
+creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+copying config/state_machine_params.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+copying config/sensors.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+copying config/global_params.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+copying config/opponent_tracker_params.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+copying config/mux.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config
+creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+copying config/NUC2/slam/f110_2d.lua -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+copying config/NUC2/slam/f110_2d_loc.lua -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+copying config/NUC2/l1_params.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+copying config/NUC2/joy_teleop.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+copying config/NUC2/vesc.yaml -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC2
+creating /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC5
+copying config/NUC5/slam/f110_2d.lua -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC5
+copying config/NUC5/slam/f110_2d_loc.lua -> /home/minze/ws/src/race_stack/stack_master/install/stack_master/share/stack_master/config/NUC5
+error: can't copy 'config/NUC5/pacejka/dubi': doesn't exist or not a regular file

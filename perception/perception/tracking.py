@@ -456,26 +456,26 @@ class StaticDynamic(Node):
 
         # ------------ Subscribers ------------
         self.obs_sub = self.create_subscription(
-            ObstacleArray, '/perception/detection/raw_obstacles', self.obstacleCallback, 10)
+            ObstacleArray, 'perception/detection/raw_obstacles', self.obstacleCallback, 10)
         self.glob_wpts_sub = self.create_subscription(
             WpntArray, '/global_waypoints', self.pathCallback, 10)
         self.cs_frenet = self.create_subscription(
-            Odometry, '/car_state/frenet/odom', self.carStateCallback, 10)
+            Odometry, 'car_state/frenet/odom', self.carStateCallback, 10)
         self.cs_odom_sub = self.create_subscription(
-            Odometry, '/car_state/odom', self.carStateGlobCallback, 10)
+            Odometry, 'car_state/odom', self.carStateGlobCallback, 10)
         self.scan_sub = self.create_subscription(
-            LaserScan, '/scan', self.scansCallback, 10)
+            LaserScan, 'scan', self.scansCallback, 10)
 
         # ------------ Publishers ------------
         self.static_dynamic_marker_pub = self.create_publisher(
-            MarkerArray, '/perception/static_dynamic_marker_pub', 5)
+            MarkerArray, 'perception/static_dynamic_marker_pub', 5)
         self.estimated_obstacles_pub = self.create_publisher(
-            ObstacleArray, '/perception/obstacles', 5)
+            ObstacleArray, 'perception/obstacles', 5)
         self.raw_opponent_pub = self.create_publisher(
-            ObstacleArray, '/perception/raw_obstacles', 5)
+            ObstacleArray, 'perception/raw_obstacles', 5)
         if self.measuring:
             self.latency_pub = self.create_publisher(
-                Float32, '/perception/tracking/latency', 10)
+                Float32, 'perception/tracking/latency', 10)
             
         self.get_logger().info('[Tracking]: Tracking initialized')
             

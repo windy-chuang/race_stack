@@ -43,7 +43,7 @@ class StateMachine(Node):
         
         # SUBSCRIPTIONS
         if self.params.test_on_car:
-            self.battery_sub = self.create_subscription(VescStateStamped, "/vesc/sensors/core", self.battery_cb, 10)
+            self.battery_sub = self.create_subscription(VescStateStamped, "vesc/sensors/core", self.battery_cb, 10)
         else:
             self.battery_level = self.params.volt_threshold + 1
         self.max_speed = None
@@ -65,14 +65,14 @@ class StateMachine(Node):
         
         self.cur_s = None
         self.cur_d = None
-        self.create_subscription(Odometry, '/car_state/frenet/odom',self.car_state_frenet_cb, 10) # car frenet coordinates
+        self.create_subscription(Odometry, 'car_state/frenet/odom',self.car_state_frenet_cb, 10) # car frenet coordinates
         while self.cur_s is None:
             self.get_logger().info("Waiting for car state frenet message", throttle_duration_sec=0.5)
             rclpy.spin_once(self)
 
         if self.params.mode == 'head_to_head':
             self.current_position = None
-            self.create_subscription(PoseStamped, '/car_state/pose', self.car_state_cb, 10)
+            self.create_subscription(PoseStamped, 'car_state/pose', self.car_state_cb, 10)
             while self.current_position is None:
                 self.get_logger().info("Waiting for car state pose message", throttle_duration_sec=0.5)
                 rclpy.spin_once(self)
@@ -81,10 +81,10 @@ class StateMachine(Node):
             self.last_valid_avoidance_wpnts = None
             self.splini_ttl_counter = 0
             self.avoidance_wpnts = None
-            self.create_subscription(OTWpntArray, '/planner/avoidance/otwpnts', self.avoidance_cb, 10)
+            self.create_subscription(OTWpntArray, 'planner/avoidance/otwpnts', self.avoidance_cb, 10)
 
             self.obstacles = []
-            self.create_subscription(ObstacleArray, "/perception/obstacles", self.obstacles_cb, 10)
+            self.create_subscription(ObstacleArray, "perception/obstacles", self.obstacles_cb, 10)
         
             # TODO setup things for sectors and overtaking sectors
             self.only_ftg_zones = []
@@ -375,7 +375,7 @@ class StateMachine(Node):
         """Obtain the initial overtaking parameters from the parameter server.
         Then instantiate a parameter event handler to get the updates on those parameters.
         """
-        self.parameter_client = self.create_client(GetParameters, '/ot_interpolator/get_parameters')
+        self.parameter_client = self.create_client(GetParameters, 'ot_interpolator/get_parameters')
         self.parameter_client.wait_for_service()
         self.n_ot_sectors = None
         self.ot_param_names = None

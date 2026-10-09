@@ -14,8 +14,8 @@ class FrenetOdomRepublisher(Node):
     def __init__(self):
         super().__init__('frenet_odom_republisher')
         self.has_global_trajectory = False
-        self.frenet_odom_publisher_ = self.create_publisher(Odometry, '/car_state/frenet/odom', 10)
-        self.frenet_pose_publisher_ = self.create_publisher(PoseStamped, '/car_state/frenet/pose', 10)
+        self.frenet_odom_publisher_ = self.create_publisher(Odometry, 'car_state/frenet/odom', 10)
+        self.frenet_pose_publisher_ = self.create_publisher(PoseStamped, 'car_state/frenet/pose', 10)
 
         self.global_trajectory_sub_ = self.create_subscription(
             WpntArray,

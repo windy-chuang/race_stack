@@ -65,9 +65,9 @@ class ObstacleSpliner(Node):
 
         # Setup subscriptions
         self.create_subscription(
-            ObstacleArray, '/perception/obstacles', self.obs_cb, QoSProfile(depth=10))
+            ObstacleArray, 'perception/obstacles', self.obs_cb, QoSProfile(depth=10))
         self.create_subscription(
-            Odometry, '/car_state/frenet/odom', self.state_cb, QoSProfile(depth=10))
+            Odometry, 'car_state/frenet/odom', self.state_cb, QoSProfile(depth=10))
         self.create_subscription(
             WpntArray, '/global_waypoints', self.gb_cb, QoSProfile(depth=10))
         self.create_subscription(
@@ -75,13 +75,13 @@ class ObstacleSpliner(Node):
 
         # Setup publishers
         self.mrks_pub = self.create_publisher(
-            MarkerArray, '/planner/avoidance/markers', QoSProfile(depth=10))
+            MarkerArray, 'planner/avoidance/markers', QoSProfile(depth=10))
         self.evasion_pub = self.create_publisher(
-            OTWpntArray, '/planner/avoidance/otwpnts', QoSProfile(depth=10))
+            OTWpntArray, 'planner/avoidance/otwpnts', QoSProfile(depth=10))
         self.closest_obs_pub = self.create_publisher(
-            Marker, '/planner/avoidance/considered_OBS', QoSProfile(depth=10))
+            Marker, 'planner/avoidance/considered_OBS', QoSProfile(depth=10))
         self.pub_propagated = self.create_publisher(
-            Marker, '/planner/avoidance/propagated_obs', QoSProfile(depth=10))
+            Marker, 'planner/avoidance/propagated_obs', QoSProfile(depth=10))
 
         # dyn params sub
         self.pre_apex_0 = -4.0
@@ -118,7 +118,7 @@ class ObstacleSpliner(Node):
         self.add_on_set_parameters_callback(self.dyn_param_cb)
 
         if self.measuring:
-            self.latency_pub = self.create_publisher(Float32, '/planner/avoidance/latency', QoSProfile(depth=10))
+            self.latency_pub = self.create_publisher(Float32, 'planner/avoidance/latency', QoSProfile(depth=10))
 
         # Wait for messages
         self.wait_for_messages()

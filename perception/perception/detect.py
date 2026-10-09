@@ -107,21 +107,21 @@ class Detect(Node):
         # --- Subscribers ---
         msgs_cb_group = ReentrantCallbackGroup()
         self.scan_sub = self.create_subscription(
-            LaserScan, '/scan', self.laserCb, 10, callback_group=msgs_cb_group)
+            LaserScan, 'scan', self.laserCb, 10, callback_group=msgs_cb_group)
         self.glob_wpts_sub = self.create_subscription(
             WpntArray, '/global_waypoints', self.pathCb, 10, callback_group=msgs_cb_group)
         self.car_state_sub = self.create_subscription(
-            Odometry, '/car_state/frenet/odom', self.carStateCb, 10, callback_group=msgs_cb_group)
+            Odometry, 'car_state/frenet/odom', self.carStateCb, 10, callback_group=msgs_cb_group)
 
         # --- Publisher ---
         self.breakpoints_markers_pub = self.create_publisher(
-            MarkerArray, '/perception/breakpoints_markers', 5)
+            MarkerArray, 'perception/breakpoints_markers', 5)
         self.boundaries_pub = self.create_publisher(
-            Marker, '/perception/detect_bound', qos_profile=latching_qos)
+            Marker, 'perception/detect_bound', qos_profile=latching_qos)
         self.obstacles_msg_pub = self.create_publisher(
-            ObstacleArray, '/perception/detection/raw_obstacles', 5)
+            ObstacleArray, 'perception/detection/raw_obstacles', 5)
         self.obstacles_marker_pub = self.create_publisher(
-            MarkerArray, '/perception/obstacles_markers_new', 5)
+            MarkerArray, 'perception/obstacles_markers_new', 5)
 
         self.declare_parameter("rate", 40, descriptor=ParameterDescriptor(
             description="rate at which the node is running"))

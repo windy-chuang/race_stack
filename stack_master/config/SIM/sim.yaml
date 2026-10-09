@@ -32,6 +32,7 @@ bridge:
     opp_namespace: 'opp_racecar'
     opp_scan_topic: 'opp_scan'
     opp_odom_topic: 'odom'
+    opp_pose_topic: 'pose'
     opp_ego_odom_topic: 'opp_odom'
     opp_drive_topic: 'opp_drive'
 

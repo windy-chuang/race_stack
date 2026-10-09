@@ -1,0 +1,38 @@
+<launch>
+  <arg name="ns" description="Car namespace, e.g. ego / opp" />
+  <arg name="planner" default="spliner" description="spliner / ibr / none" />
+  <arg name="ctrl_algo" default="PP" description="MAP / PP" />
+  <arg name="map_name" default="latest" />
+
+  <group>
+    <push-ros-namespace namespace="$(var ns)" />
+
+    <!-- per-car: car_state/odom -> car_state/frenet/odom -->
+    <include file="$(find-pkg-share frenet_odom_republisher)/launch/frenet_odom_republisher_launch.xml" />
+
+    <!-- per-car: state_machine now calls the relative 'ot_interpolator/get_parameters' -->
+    <node pkg="sector_tuner" name="ot_interpolator" exec="ot_interpolator">
+      <param name="map_name" value="$(var map_name)" />
+      <param from="$(find-pkg-share stack_master)/maps/$(var map_name)/ot_sectors.yaml" />
+    </node>
+
+    <include file="$(find-pkg-share controller)/launch/controller_launch.xml">
+      <arg name="mode" value="$(var ctrl_algo)" />
+    </include>
+
+    <include file="$(find-pkg-share state_machine)/launch/state_machine_launch.xml">
+      <arg name="mode" value="head_to_head" />
+    </include>
+
+    <include file="$(find-pkg-share perception)/launch/perception_launch.xml">
+      <arg name="param_file" value="$(find-pkg-share stack_master)/config/opponent_tracker_params.yaml" />
+    </include>
+
+    <group if="$(eval '\'$(var planner)\' == \'spliner\'')">
+      <include file="$(find-pkg-share spline_planner)/launch/spline_planner_launch.xml" />
+    </group>
+    <group if="$(eval '\'$(var planner)\' == \'ibr\'')">
+      <node pkg="ibr_planner" exec="ibr_planner" name="ibr_planner" output="screen" />
+    </group>
+  </group>
+</launch>
