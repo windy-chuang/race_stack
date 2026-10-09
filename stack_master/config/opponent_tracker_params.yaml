@@ -6,7 +6,7 @@
     min_2_points_dist: 0.01 # minimum distance between two points
     min_obs_size: 10
     max_obs_size: 1.0
-    max_viewing_distance: 9
+    max_viewing_distance: 9.0
     boundaries_inflation: 0.1
 
 

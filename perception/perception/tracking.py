@@ -286,7 +286,7 @@ class StaticDynamic(Node):
         """
         super().__init__('tracking',
                          allow_undeclared_parameters=True,
-                         automatically_declare_parameters_from_overrides=True)  # type: ignore
+                        )  # type: ignore
 
         # ------------ Tunable Parameters ------------
         self.declare_parameter("rate", 40, descriptor=ParameterDescriptor(

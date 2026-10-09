@@ -90,7 +90,7 @@ class Detect(Node):
         """
         super().__init__('detection',
                          allow_undeclared_parameters=True,
-                         automatically_declare_parameters_from_overrides=True)  # type: ignore
+                        )  # type: ignore
 
         self.converter = None
 

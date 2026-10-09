@@ -4,6 +4,7 @@
   <arg name="opp_planner" default="spliner"    description="spliner / ibr / none" />
   <arg name="ego_ctrl" default="PP" />
   <arg name="opp_ctrl" default="PP" />
+  <arg name="opponent_source" default="perception" description="gt / perception" />
   <let name="map_path" value="$(find-pkg-share stack_master)/maps/$(var map_name)" />
 
   <!-- shared -->
@@ -31,11 +32,15 @@
     <arg name="planner" value="$(var ego_planner)" />
     <arg name="ctrl_algo" value="$(var ego_ctrl)" />
     <arg name="map_name" value="$(var map_name)" />
+    <arg name="opponent_source" value="$(var opponent_source)" />
+    <arg name="opp_ns" value="opp" />
   </include>
   <include file="$(find-pkg-share stack_master)/launch/car_stack_launch.xml">
     <arg name="ns" value="opp" />
     <arg name="planner" value="$(var opp_planner)" />
     <arg name="ctrl_algo" value="$(var opp_ctrl)" />
     <arg name="map_name" value="$(var map_name)" />
+    <arg name="opponent_source" value="$(var opponent_source)" />
+    <arg name="opp_ns" value="ego" />
   </include>
 </launch>

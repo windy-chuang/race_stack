@@ -17,6 +17,10 @@ source install/setup.bash
 pkill -9 -f <name>
 
 
+# Launch two car sim
+ros2 launch stack_master sim_two_car_launch.xml map_name:=GLC_smile_small ego_planner:=spliner opp_planner:=spliner
+
+
 
 
 

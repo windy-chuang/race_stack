@@ -3,6 +3,9 @@
   <arg name="planner" default="spliner" description="spliner / ibr / none" />
   <arg name="ctrl_algo" default="PP" description="MAP / PP" />
   <arg name="map_name" default="latest" />
+  <arg name="opponent_source" default="perception" description="gt / perception" />
+  <arg name="opp_ns" default="" description="namespace of the other car, used when opponent_source=gt" />
+
 
   <group>
     <push-ros-namespace namespace="$(var ns)" />
@@ -23,10 +26,20 @@
     <include file="$(find-pkg-share state_machine)/launch/state_machine_launch.xml">
       <arg name="mode" value="head_to_head" />
     </include>
+    <!-- opponent info: real perception -->
+    <group if="$(eval '\'$(var opponent_source)\' == \'perception\'')">
+      <include file="$(find-pkg-share perception)/launch/perception_launch.xml">
+        <arg name="param_file" value="$(find-pkg-share stack_master)/config/opponent_tracker_params.yaml" />
+      </include>
+    </group>
 
-    <include file="$(find-pkg-share perception)/launch/perception_launch.xml">
-      <arg name="param_file" value="$(find-pkg-share stack_master)/config/opponent_tracker_params.yaml" />
-    </include>
+    <!-- opponent info: ground truth from the other car's odom -->
+    <group if="$(eval '\'$(var opponent_source)\' == \'gt\'')">
+      <node pkg="perception" exec="gt_opponent" name="gt_opponent" output="screen">
+        <param name="opp_ns" value="$(var opp_ns)" />
+        <param name="use_sim_time" value="True" />
+      </node>
+    </group>
 
     <group if="$(eval '\'$(var planner)\' == \'spliner\'')">
       <include file="$(find-pkg-share spline_planner)/launch/spline_planner_launch.xml" />
