@@ -675,7 +675,7 @@ class Controller(Node):
         self.lookahead_pub.publish(lookahead_marker)
 
     def visualize_trailing_opponent(self):
-        if(self.state == "TRAILING" and (self.opponent is not None)):
+        if(self.state == "StateType.TRAILING" and (self.opponent is not None)):
             on = True
         else:
             on = False

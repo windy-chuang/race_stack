@@ -397,6 +397,10 @@ class Detect(Node):
 
         remove_array = []
         for idx, object in enumerate(objects_pointcloud_list):
+            self.get_logger().debug(
+                f"cluster {idx}: n={len(object)} s={s_points[idx]:.2f} d={d_points[idx]:.2f} "
+                f"car_s={car_s:.2f} ds={normalize_s(s_points[idx]-car_s, self.track_length):.2f}"
+            )
             if len(object) < self.min_obs_size:
                 remove_array.append(object)
                 continue

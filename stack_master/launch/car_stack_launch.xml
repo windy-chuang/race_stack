@@ -5,7 +5,7 @@
   <arg name="map_name" default="latest" />
   <arg name="opponent_source" default="perception" description="gt / perception" />
   <arg name="opp_ns" default="" description="namespace of the other car, used when opponent_source=gt" />
-
+  <arg name="speed_scale" default="1.0" />
 
   <group>
     <push-ros-namespace namespace="$(var ns)" />
@@ -23,9 +23,18 @@
       <arg name="mode" value="$(var ctrl_algo)" />
     </include>
 
-    <include file="$(find-pkg-share state_machine)/launch/state_machine_launch.xml">
-      <arg name="mode" value="head_to_head" />
-    </include>
+    <group unless="$(eval '\'$(var planner)\' == \'gb\'')">
+      <include file="$(find-pkg-share state_machine)/launch/state_machine_launch.xml">
+        <arg name="mode" value="head_to_head" />
+      </include>
+    </group>
+    <group if="$(eval '\'$(var planner)\' == \'gb\'')">
+      <!-- named state_machine: the controller queries state_machine/rate_hz at startup -->
+      <node pkg="gb_follower" exec="gb_follower" name="state_machine" output="screen">
+        <param name="speed_scale" value="$(var speed_scale)" />
+      </node>
+    </group>
+
     <!-- opponent info: real perception -->
     <group if="$(eval '\'$(var opponent_source)\' == \'perception\'')">
       <include file="$(find-pkg-share perception)/launch/perception_launch.xml">

@@ -1,10 +1,11 @@
 <launch>
   <arg name="map_name" default="latest" />
   <arg name="ego_planner" default="spliner" description="spliner / ibr / none" />
-  <arg name="opp_planner" default="spliner"    description="spliner / ibr / none" />
+  <arg name="opp_planner" default="spliner"    description="spliner / ibr / gb / none" />
   <arg name="ego_ctrl" default="PP" />
   <arg name="opp_ctrl" default="PP" />
   <arg name="opponent_source" default="perception" description="gt / perception" />
+  <arg name="opp_speed_scale" default="1.0" />
   <let name="map_path" value="$(find-pkg-share stack_master)/maps/$(var map_name)" />
 
   <!-- shared -->
@@ -38,6 +39,7 @@
   <include file="$(find-pkg-share stack_master)/launch/car_stack_launch.xml">
     <arg name="ns" value="opp" />
     <arg name="planner" value="$(var opp_planner)" />
+    <arg name="speed_scale" value="$(var opp_speed_scale)" />
     <arg name="ctrl_algo" value="$(var opp_ctrl)" />
     <arg name="map_name" value="$(var map_name)" />
     <arg name="opponent_source" value="$(var opponent_source)" />

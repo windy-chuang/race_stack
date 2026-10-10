@@ -1,8 +1,8 @@
 <launch>
     <arg name="param_file" description="Filepath to the opponent tracking/detection config file" />
 
-    <node pkg="perception" name="detect" exec="detect" output="log"
-        args="--ros-args --log-level info">
+    <node pkg="perception" name="detect" exec="detect" output="screen"
+        args="--ros-args --log-level debug">
         <param from= "$(var param_file)" />
     </node>
 
