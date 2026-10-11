@@ -594,8 +594,8 @@ class Controller(Node):
         ack_msg = AckermannDriveStamped()
         ack_msg.header.stamp = self.get_clock().now().to_msg()
         ack_msg.header.frame_id = 'base_link'
-        ack_msg.drive.steering_angle = steer
-        ack_msg.drive.speed = speed
+        ack_msg.drive.steering_angle = float(steer)
+        ack_msg.drive.speed = float(speed)
         self.drive_pub.publish(ack_msg)
         
     ############################################MSG CREATION############################################

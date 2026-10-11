@@ -23,7 +23,7 @@
       <arg name="mode" value="$(var ctrl_algo)" />
     </include>
 
-    <group unless="$(eval '\'$(var planner)\' == \'gb\'')">
+    <group unless="$(eval '\'$(var planner)\' in [\'gb\', \'ibr\']')">
       <include file="$(find-pkg-share state_machine)/launch/state_machine_launch.xml">
         <arg name="mode" value="head_to_head" />
       </include>
@@ -46,7 +46,6 @@
     <group if="$(eval '\'$(var opponent_source)\' == \'gt\'')">
       <node pkg="perception" exec="gt_opponent" name="gt_opponent" output="screen">
         <param name="opp_ns" value="$(var opp_ns)" />
-        <param name="use_sim_time" value="True" />
       </node>
     </group>
 
@@ -54,7 +53,10 @@
       <include file="$(find-pkg-share spline_planner)/launch/spline_planner_launch.xml" />
     </group>
     <group if="$(eval '\'$(var planner)\' == \'ibr\'')">
-      <node pkg="ibr_planner" exec="ibr_planner" name="ibr_planner" output="screen" />
+      <node pkg="ibr_planner" exec="ibr_planner" name="state_machine" output="screen">
+        <param name="opp_ns" value="$(var opp_ns)" />
+        <param name="rate_hz" value="10" />
+      </node>
     </group>
   </group>
 </launch>

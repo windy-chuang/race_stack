@@ -118,12 +118,13 @@ class StateMachine(Node):
         self.state_marker_pub = self.create_publisher(Marker, 'state_marker', 10)
         self.loc_wpnt_pub = self.create_publisher(WpntArray, 'local_waypoints', 10)
         self.vis_loc_wpnt_pub = self.create_publisher(MarkerArray, 'local_waypoints/markers', 10)
-        
-        # main loop
-        self.main_loop = self.create_timer(1/self.params.rate_hz, self.main_loop_callback)
 
+        
         # set up ot param reading
         self.init_ot_params()
+
+        # main loop
+        self.main_loop = self.create_timer(1/self.params.rate_hz, self.main_loop_callback)
 
     #############
     # CALLBACKS #
