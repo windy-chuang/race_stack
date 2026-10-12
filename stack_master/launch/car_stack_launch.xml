@@ -55,7 +55,7 @@
     <group if="$(eval '\'$(var planner)\' == \'ibr\'')">
       <node pkg="ibr_planner" exec="ibr_planner" name="state_machine" output="screen">
         <param name="opp_ns" value="$(var opp_ns)" />
-        <param name="rate_hz" value="10" />
+        <param name="rate_hz" value="20" />
       </node>
     </group>
   </group>

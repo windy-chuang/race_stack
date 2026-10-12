@@ -58,6 +58,48 @@ class IBRPlanner(Node):
         self.loc_pub = self.create_publisher(WpntArray, 'local_waypoints', 10)
         self.create_timer(1 / self.rate_hz, self.loop)
 
+        self.build_problem()
+
+    def build_problem(self):
+        N = self.n_steps
+        # both cars use the same radii, so one problem works for i_ego = 0 and 1
+        d_coll = self.car_params[0]["r_col"] + self.car_params[1]["r_col"]
+        d_safe = self.car_params[0]["r_safe"] + self.car_params[1]["r_safe"]
+        w = 0.5 ** np.arange(N)  # exponentially decreasing weights (constant)
+
+        # --- parameters: numbers that change every tick ---
+        self.par_p0 = cp.Parameter(2)               # current position
+        self.par_step = cp.Parameter(nonneg=True)   # v_max * dt
+        self.par_n = cp.Parameter((N, 2))           # track normal n[k]
+        self.par_nc = cp.Parameter(N)               # n[k] . c[k]
+        self.par_half_w = cp.Parameter(N)           # width[k] - r_col
+        self.par_beta = cp.Parameter((N, 2))        # unit vector ego -> opp
+        self.par_beta_opp = cp.Parameter(N)         # beta[k] . p_opp[k]
+        self.par_t_last = cp.Parameter(2)           # tangent at last point
+
+        self.p = cp.Variable((N, 2))
+        p = self.p
+
+        # dynamics: ||p0 - p[0]|| <= v*dt, ||p[k+1] - p[k]|| <= v*dt
+        dyn = [cp.norm(p[0] - self.par_p0) <= self.par_step,
+            cp.norm(p[1:] - p[:-1], axis=1) <= self.par_step]
+
+        # track: |n[k].p[k] - n[k].c[k]| <= width - r_col
+        lateral = cp.sum(cp.multiply(self.par_n, p), axis=1) - self.par_nc
+        track = [lateral <= self.par_half_w, lateral >= -self.par_half_w]
+
+        # non-collision (linearized half-plane): beta.p_opp - beta.p >= d_coll
+        dist = self.par_beta_opp - cp.sum(cp.multiply(self.par_beta, p), axis=1)
+        nc = [dist >= d_coll]
+        nc_obj = w @ cp.pos(d_safe - dist)
+
+        obj = -self.par_t_last @ p[-1]
+
+        self.prob = cp.Problem(cp.Minimize(obj + self.nc_weight * nc_obj),
+                            dyn + track + nc)
+        self.get_logger().info(f'IBR problem is DPP: {self.prob.is_dpp()}')
+
+        
     def gb_cb(self, msg: WpntArray):
         # copy so scaling never compounds on repeated messages
         wpnts = copy.deepcopy(msg.wpnts)
@@ -65,8 +107,8 @@ class IBRPlanner(Node):
             wpnt.vx_mps *= self.speed_scale
         self.wpnts = wpnts
         self.wpnt_dist = wpnts[1].s_m - wpnts[0].s_m
-        self.car_params[0]["v_max"] = max([wpnt.vx_mps for wpnt in msg.wpnts])
-        self.car_params[1]["v_max"] = max([wpnt.vx_mps for wpnt in msg.wpnts])
+        self.car_params[0]["v_max"] = max([wpnt.vx_mps for wpnt in wpnts])
+        self.car_params[1]["v_max"] = max([wpnt.vx_mps for wpnt in wpnts])
 
 
     def centerline_cb(self, msg: WpntArray):
@@ -105,7 +147,7 @@ class IBRPlanner(Node):
         out = WpntArray()
         out.header.stamp = self.get_clock().now().to_msg()
         out.header.frame_id = 'map'
-        point_array = self.iterative_br(0, self.state, n_game_iterations=1, n_sqp_iterations=1)
+        point_array = self.iterative_br(0, self.state, n_game_iterations=1, n_sqp_iterations=2)
 
         pts = np.vstack([self.state[0], point_array])
         steps = np.diff(pts, axis=0)
@@ -136,7 +178,7 @@ class IBRPlanner(Node):
             trajectory[k, :] = p
         return trajectory
 
-    def iterative_br(self, i_ego, state, n_game_iterations=1, n_sqp_iterations=1):
+    def iterative_br(self, i_ego, state, n_game_iterations=1, n_sqp_iterations=2):
         trajectories = [
             self.init_trajectory(i, state[i, :]) for i in [0, 1]
         ]
@@ -152,8 +194,54 @@ class IBRPlanner(Node):
         self.get_logger().info(f'Total IBR solution time: {t1 - t0:.4f} s')
         return trajectories[i_ego]
 
-
     def best_response(self, i_ego, state, trajectories):
+        t_build = time.time()
+        i_opp = (i_ego + 1) % 2
+        N = self.n_steps
+        n = np.zeros((N, 2))
+        nc = np.zeros(N)
+        half_w = np.zeros(N)
+        beta = np.zeros((N, 2))
+        beta_opp = np.zeros(N)
+
+        for k in range(N):
+            p_ego = trajectories[i_ego][k, :]
+            p_opp = trajectories[i_opp][k, :]
+            _, c, t, n[k], width = self.track_frame_at(p_ego)
+            nc[k] = n[k] @ c
+            half_w[k] = width - self.car_params[i_ego]["r_col"]
+            b = p_opp - p_ego
+            if np.linalg.norm(b) >= 1e-6:
+                b = b / np.linalg.norm(b)
+            beta[k] = b
+            beta_opp[k] = b @ p_opp
+
+        self.par_p0.value = state[i_ego, :].copy()
+        self.par_step.value = self.car_params[i_ego]["v_max"] * self.dt
+        self.par_n.value = n
+        self.par_nc.value = nc
+        self.par_half_w.value = half_w
+        self.par_beta.value = beta
+        self.par_beta_opp.value = beta_opp
+        self.par_t_last.value = t  # tangent from the last loop step (k = N-1)
+
+        self.get_logger().info(f'build: {time.time() - t_build:.4f} s')
+        try:
+            self.prob.solve(solver=cp.CLARABEL)
+        except cp.error.SolverError:
+            self.get_logger().warn('solver failed: using previous trajectory')
+            return trajectories[i_ego]
+        self.get_logger().debug(
+            f'compile: {self.prob.compilation_time:.4f} s | '
+            f'solve: {self.prob.solver_stats.solve_time} s | '
+            f'status: {self.prob.status}'
+        )
+
+        if self.p.value is None:  # infeasible -> relaxations come in step 3
+            return trajectories[i_ego]
+        return self.p.value.copy()
+
+    def best_response_old(self, i_ego, state, trajectories):
         """Based on current trajectories, compute the best-response (BR) of player i_ego.
 
         This is done by solving an optimization problem over the trajectory
@@ -188,6 +276,7 @@ class IBRPlanner(Node):
         :param trajectories: The current trajectories
         :return: Optimized trajectory of player i_ego
         """
+        t_build = time.time()
         i_opp = (i_ego + 1) % 2
         v_ego = self.car_params[i_ego]["v_max"]
         r_coll_ego = self.car_params[i_ego]["r_col"]
@@ -279,10 +368,19 @@ class IBRPlanner(Node):
         # try to solve proposed problem
         trajectory_result = np.array((self.n_steps, 2))
         try:
+            
+            self.get_logger().info(f'build: {time.time() - t_build:.4f} s')
             prob.solve()
+            self.get_logger().info(
+                f'compile: {prob.compilation_time:.4f} s | '
+                f'solve: {prob.solver_stats.solve_time} s | '
+                f'solver: {prob.solver_stats.solver_name}'
+            )
+
+
             # relax track constraints if problem is infeasible
             if np.isinf(prob.value):    
-                print("WARN: relaxing track constraints")
+                self.get_logger().warn("WARN: relaxing track constraints")
                 # If the problem is not feasible, relax track constraints
                 # Assert it is indeed an infeasible problem and not unbounded (in which case value is -inf).
                 # (The dynamical constraints keep the problem bounded.)
@@ -295,7 +393,7 @@ class IBRPlanner(Node):
 
                 # relax non-collision constraints if problem is still  infeasible
                 if np.isinf(relaxed_prob.value):
-                    print("WARN: relaxing non collision constraints")
+                    self.get_logger().warn("WARN: relaxing non collision constraints")
                     # If the problem is still infeasible, relax non-collision constraints
                     # Again, assert it is indeed an infeasible problem and not unbounded (in which case value is -inf).
                     # (The dynamical constraints keep the problem bounded.)
@@ -312,7 +410,7 @@ class IBRPlanner(Node):
             else:
                 trajectory_result = p.value
         except:  # if cvxpy fails, just return the initialized trajectory to do something
-            print("WARN: cvxpy failre: resorting to initial trajectory (no collision constraints!)")
+            self.get_logger().warn("WARN: cvxpy failre: resorting to initial trajectory (no collision constraints!)")
             trajectory_result = trajectories[i_ego]
         return trajectory_result
 
