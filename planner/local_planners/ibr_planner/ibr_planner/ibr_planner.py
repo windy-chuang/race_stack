@@ -17,8 +17,8 @@ class IBRPlanner(Node):
 
     def __init__(self):
         super().__init__('ibr_planner')
-        self.rate_hz = self.declare_parameter('rate_hz', 40).value
-        self.speed_scale = self.declare_parameter('speed_scale', 0.3).value
+        self.rate_hz = self.declare_parameter('rate_hz', 10).value
+        self.speed_scale = self.declare_parameter('speed_scale', 0.2).value
         self.n_loc_wpnts = self.declare_parameter('n_loc_wpnts', 80).value
 
         self.have_ego = False
@@ -26,10 +26,10 @@ class IBRPlanner(Node):
 
         self.state = np.zeros((2, 2))
         self.car_params = [{}, {}]
-        self.car_params[0]["r_col"] = 0.29  # half car length
-        self.car_params[0]["r_safe"] = 0.58 # full car length
-        self.car_params[1]["r_col"] = 0.29
-        self.car_params[1]["r_safe"] = 0.58 
+        self.car_params[0]["r_col"] = 0.58  # half car length
+        self.car_params[0]["r_safe"] = 1.16 # full car length
+        self.car_params[1]["r_col"] = 0.58
+        self.car_params[1]["r_safe"] = 1.16
 
         self.dt = 0.1
         self.n_steps = 15
@@ -76,6 +76,8 @@ class IBRPlanner(Node):
         self.par_beta = cp.Parameter((N, 2))        # unit vector ego -> opp
         self.par_beta_opp = cp.Parameter(N)         # beta[k] . p_opp[k]
         self.par_t_last = cp.Parameter(2)           # tangent at last point
+        self.par_bn = cp.Parameter((N, 2))
+        self.par_bn_opp = cp.Parameter(N)
 
         self.p = cp.Variable((N, 2))
         p = self.p
@@ -93,9 +95,13 @@ class IBRPlanner(Node):
         nc = [dist >= d_coll]
         nc_obj = w @ cp.pos(d_safe - dist)
 
+        # blocking: sum_k gamma_k * (n[k].(p[k] - p_opp[k]))^2, gamma folded into par_bn
+        block_obj = cp.sum_squares(cp.sum(cp.multiply(self.par_bn, p), axis=1) - self.par_bn_opp)
+
+
         obj = -self.par_t_last @ p[-1]
 
-        self.prob = cp.Problem(cp.Minimize(obj + self.nc_weight * nc_obj),
+        self.prob = cp.Problem(cp.Minimize(obj + self.nc_weight * nc_obj + self.blocking_weight * block_obj),
                             dyn + track + nc)
         self.get_logger().info(f'IBR problem is DPP: {self.prob.is_dpp()}')
 
@@ -203,11 +209,17 @@ class IBRPlanner(Node):
         half_w = np.zeros(N)
         beta = np.zeros((N, 2))
         beta_opp = np.zeros(N)
+        gamma = np.zeros(N)
 
         for k in range(N):
             p_ego = trajectories[i_ego][k, :]
             p_opp = trajectories[i_opp][k, :]
             _, c, t, n[k], width = self.track_frame_at(p_ego)
+            lead = (p_ego - p_opp) @ t
+            if lead > 0:
+                gamma[k] = 0.5 ** k / (lead * lead) / (k + 1)
+            if k == 0:
+                lead_0 = lead
             nc[k] = n[k] @ c
             half_w[k] = width - self.car_params[i_ego]["r_col"]
             b = p_opp - p_ego
@@ -215,6 +227,13 @@ class IBRPlanner(Node):
                 b = b / np.linalg.norm(b)
             beta[k] = b
             beta_opp[k] = b @ p_opp
+
+        if not (self.blocking and lead_0 > 0):
+            gamma[:] = 0.0
+        sg = np.sqrt(gamma)
+        bn = sg[:, None] * n
+        self.par_bn.value = bn
+        self.par_bn_opp.value = np.sum(bn * trajectories[i_opp], axis=1)
 
         self.par_p0.value = state[i_ego, :].copy()
         self.par_step.value = self.car_params[i_ego]["v_max"] * self.dt
