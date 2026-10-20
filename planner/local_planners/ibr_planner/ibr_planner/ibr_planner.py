@@ -37,7 +37,7 @@ class IBRPlanner(Node):
         super().__init__("ibr_planner")
 
         self.rate_hz = float(self.declare_parameter("rate_hz", 10.0).value)
-        self.speed_scale = float(self.declare_parameter("speed_scale", 0.2).value)
+        self.speed_scale = float(self.declare_parameter("speed_scale", 0.5).value)
         # self.n_loc_wpnts = int(self.declare_parameter("n_loc_wpnts", 80).value)
         self.opp_ns = str(self.declare_parameter("opp_ns", "opp").value)
 

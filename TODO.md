@@ -46,6 +46,10 @@
 
 23. Fast and slow IBRs
 
+24. Import different maps (wide margin etc.)
+
+
+
 
 
 
@@ -73,3 +77,5 @@
 1. Added blocking term
 2. Tuned collision distance
 3. SGTP actually uses control!
+4. Fast spliner vs. slow gb: 0.6 could still overtake, 0.7 didn't succeed after several rounds
+
