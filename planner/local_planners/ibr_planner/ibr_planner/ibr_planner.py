@@ -26,6 +26,10 @@ import rclpy
 from f110_msgs.msg import Wpnt, WpntArray
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from geometry_msgs.msg import Point
+from rclpy.duration import Duration
+from visualization_msgs.msg import Marker, MarkerArray
+
 
 
 class PlannerSolveError(RuntimeError):
@@ -103,6 +107,8 @@ class IBRPlanner(Node):
             Odometry, f"/{self.opp_ns}/car_state/odom", self.opp_cb, 10
         )
         self.loc_pub = self.create_publisher(WpntArray, "local_waypoints", 10)
+        self.marker_pub = self.create_publisher(MarkerArray, "ibr/markers", 10)
+
         self.create_timer(1.0 / self.rate_hz, self.loop)
 
     def build_problem(self):
@@ -556,7 +562,7 @@ class IBRPlanner(Node):
             self.get_logger().info(
                 f"Total IBR time: {time.perf_counter() - start_time:.4f} s"
             )
-        return trajectories[i_ego]
+        return trajectories
 
     def ego_cb(self, msg: Odometry):
         self.state[0] = (
@@ -572,6 +578,25 @@ class IBRPlanner(Node):
         )
         self.have_opp = True
 
+    def traj_marker(self, start, traj, marker_id, ns, rgb, stamp):
+        """LINE_STRIP from the current position through the predicted points."""
+        mrk = Marker()
+        mrk.header.frame_id = "map"
+        mrk.header.stamp = stamp
+        mrk.ns = ns
+        mrk.id = marker_id
+        mrk.type = Marker.LINE_STRIP
+        mrk.action = Marker.ADD
+        mrk.scale.x = 0.05  # line width [m]
+        mrk.color.r, mrk.color.g, mrk.color.b = rgb
+        mrk.color.a = 1.0
+        mrk.pose.orientation.w = 1.0
+        # Expire after ~2 ticks so a failed solve doesn't leave a stale path on screen.
+        mrk.lifetime = Duration(seconds=2.0 / self.rate_hz).to_msg()
+        mrk.points = [Point(x=float(x), y=float(y), z=0.0)
+                    for x, y in np.vstack([start, traj])]
+        return mrk
+
     def loop(self):
         if (
             not self.have_ego or not self.have_opp
@@ -579,13 +604,14 @@ class IBRPlanner(Node):
             or self.car_params[0]["v_max"] <= 0
         ):
             return
-
         # One measured state snapshot per receding-horizon planning tick.
         state = self.state.copy()
-        point_array = self.iterative_br(0, state)
-        if point_array is None:
+        trajectories = self.iterative_br(0, state)
+        if trajectories is None:
             # No invented feasible trajectory; leave fallback to a supervisor.
             return
+        point_array = trajectories[0]
+
 
         pts = np.vstack([state[0], point_array])
         vx = np.linalg.norm(np.diff(pts, axis=0), axis=1) / self.dt
@@ -598,6 +624,13 @@ class IBRPlanner(Node):
             for k, (pos, speed) in enumerate(zip(point_array, vx))
         ]
         self.loc_pub.publish(out)
+        markers = MarkerArray()
+        markers.markers.append(self.traj_marker(
+            state[0], trajectories[0], 0, "ibr_ego", (0.0, 1.0, 0.0), out.header.stamp))
+        markers.markers.append(self.traj_marker(
+            state[1], trajectories[1], 1, "ibr_opp", (1.0, 0.0, 0.0), out.header.stamp))
+        self.marker_pub.publish(markers)
+
 
 
 def main():
