@@ -19,7 +19,7 @@ pkill -9 -f <name>
 
 
 # Launch two car sim
-ros2 launch stack_master sim_two_car_launch.xml map_name:=GLC_smile_small ego_planner:=spliner opp_planner:=spliner
+ros2 launch stack_master sim_two_car_launch.xml map_name:=GLC_smile_small ego_planner:=spliner opp_planner:=ibr opponent_source:=gt
 
 # Slow GB and fast spliner
 ros2 launch stack_master sim_two_car_launch.xml map_name:=GLC_smile_small   ego_planner:=spliner opp_planner:=gb opp_speed_scale:=0.3 opponent_source:=gt
