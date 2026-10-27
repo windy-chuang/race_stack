@@ -38,6 +38,7 @@ What changed relative to the previous node, and why the inner solve stops failin
 Parameters (ros2 param):
     rate_hz, dt, n_steps, opp_ns, speed_scale
     n_game_iterations   IBR sweeps per tick (each sweep = one best response per player)
+    ibr_tolerance       stop the IBR sweeps once neither player's plan moves more than this
     n_sqp_iterations    max SCP iterations per best response
     inner_tolerance     ||theta^{m+1} - theta^m|| stopping threshold
     alpha, alpha_opp    aggressiveness gains of eq. (16); 0 = plain MPC vs a fixed opponent
@@ -74,7 +75,8 @@ class IBRPlanner(Node):
         self.opp_ns = str(p("opp_ns", "opp").value)
         self.speed_scale = float(p("speed_scale", 0.5).value)
 
-        self.n_ibr = int(p("n_game_iterations", 1).value)
+        self.n_ibr = int(p("n_game_iterations", 3).value)
+        self.ibr_tol = float(p("ibr_tolerance", 2e-2).value)
         self.alpha = (float(p("alpha", 1.0).value), float(p("alpha_opp", 1.0).value))
         self.opp_timeout = float(p("opp_timeout", 0.5).value)
         r_ego = float(p("r_col_ego", 0.29).value)
@@ -83,7 +85,7 @@ class IBRPlanner(Node):
         common = dict(
             N=self.n_steps, dt=self.dt, d_min=r_ego + r_opp,
             track_margin=float(p("track_margin", r_ego).value),
-            max_iter=int(p("n_sqp_iterations", 3).value),
+            max_iter=int(p("n_sqp_iterations", 7).value),
             tol=float(p("inner_tolerance", 1e-3).value),
             trust=float(p("trust_radius", 1.0).value),
             trust0=float(p("trust_radius0", 0.4).value),
@@ -172,7 +174,7 @@ class IBRPlanner(Node):
         if self.planner is None:
             self.planner = RecedingHorizonIBR(
                 self.track, self.prm, self.prm_opp, alpha=self.alpha,
-                n_ibr=self.n_ibr, viol_tol=self.viol_tol)
+                n_ibr=self.n_ibr, ibr_tol=self.ibr_tol, viol_tol=self.viol_tol)
 
         state = self.state.copy()
         if self._opp_is_fresh():
@@ -190,10 +192,13 @@ class IBRPlanner(Node):
                                        throttle_duration_sec=2.0)
 
         res = out["res"][0]
-        self.get_logger().debug(
+        R = out["ibr"]
+        self.get_logger().info(
             f"IBR {out['time'] * 1e3:.1f} ms, {res.iters} SCP it, status={res.status}, "
             f"progress={out['progress']:.2f} m, viol track={res.max_track_viol:+.3f} "
-            f"coll={res.max_coll_viol:+.3f}")
+            f"coll={res.max_coll_viol:+.3f}"
+            f"IBR conv={R.converged} sweeps={len(R.history)}/{self.n_ibr}, "
+        )
 
         if not out["ok"]:
             # The plan would be more infeasible than the state it started from: publish
@@ -215,15 +220,46 @@ class IBRPlanner(Node):
         self.publish_markers(out["plan"], plan_opp, stamp)
 
     # ------------------------------------------------------------------ output
-    def publish_plan(self, plan, stamp):
-        """plan[0] is the measured position; publish the N planned points with the speed
-        needed to reach each one, vx[k] = ||p[k] - p[k-1]|| / dt."""
-        vx = np.linalg.norm(np.diff(plan, axis=0), axis=1) / self.dt
+    def publish_plan(self, plan, stamp, ds=0.1):
+        """Resample the plan to `ds` spacing and publish it with every Wpnt field filled.
+
+        The controllers pick their lookahead point by INDEX, assuming 0.1 m between
+        waypoints (waypoint_at_distance_before_car), so the raw plan -- one point per dt,
+        vmax*dt apart -- put the lookahead at the end of the horizon. plan[0] is the
+        measured position and is kept, so the waypoint nearest the car is the first one.
+        """
+        seg = np.linalg.norm(np.diff(plan, axis=0), axis=1)
+        v_seg = seg / self.dt                           # speed needed for each step
+        keep = np.r_[True, seg > 1e-6]                  # np.interp needs increasing knots
+        s = np.r_[0.0, np.cumsum(seg)][keep]
+        v = np.r_[v_seg[0], v_seg][keep]                # knot k: speed of the step into it
+        ss = np.arange(0.0, s[-1], ds)
+        if len(ss) < 2:
+            self.get_logger().warn("plan shorter than 2 waypoints; not publishing",
+                                   throttle_duration_sec=1.0)
+            return
+
+        x, y = np.interp(ss, s, plan[keep, 0]), np.interp(ss, s, plan[keep, 1])
+        vx = np.interp(ss, s, v)
+        psi = np.arctan2(np.gradient(y), np.gradient(x))
+        kappa = np.gradient(np.unwrap(psi)) / ds
+        ax = vx * np.gradient(vx) / ds                  # a = v dv/ds
+
+        # s/d are w.r.t. the centerline the planner's Track is built from.
+        win = max(self.prm.proj_window, s[-1] + 1.0)
+        s_tr, _, _, _, _, lat, wl, wr = self.track.frenet(
+            np.c_[x, y], self.track.project(plan[0]), win)
+        m = self.track.margin                           # Track widths have the margin removed
+
         out = WpntArray()
         out.header.stamp = stamp
         out.header.frame_id = "map"
-        out.wpnts = [Wpnt(id=k, x_m=float(pos[0]), y_m=float(pos[1]), vx_mps=float(v))
-                     for k, (pos, v) in enumerate(zip(plan[1:], vx))]
+        out.wpnts = [Wpnt(id=k, s_m=float(s_tr[k]), d_m=float(lat[k]),
+                          x_m=float(x[k]), y_m=float(y[k]),
+                          d_left=float(wl[k] + m - lat[k]), d_right=float(wr[k] + m + lat[k]),
+                          psi_rad=float(psi[k]), kappa_radpm=float(kappa[k]),
+                          vx_mps=float(vx[k]), ax_mps2=float(ax[k]))
+                     for k in range(len(ss))]
         self.loc_pub.publish(out)
 
     def traj_marker(self, traj, marker_id, ns, rgb, stamp):

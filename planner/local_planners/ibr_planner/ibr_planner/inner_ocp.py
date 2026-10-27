@@ -145,10 +145,11 @@ class Track:
 class Params:
     N: int = 20                  # horizon steps
     dt: float = 0.1              # step [s]
-    vmax: float = 4.0            # max speed [m/s] -> step bound vmax*dt
+    # vmax: float = 3.2            # max speed [m/s] -> step bound vmax*dt
+    vmax: float = 1.6
     d_min: float = 0.5           # min centre-to-centre distance [m] (sum of the two radii)
     track_margin: float = 0.15   # car half-width, removed from d_left/d_right [m]
-    max_iter: int = 12           # max SCP iterations per best response
+    max_iter: int = 8           # max SCP iterations per best response
     tol: float = 1e-3            # ||theta^{m+1} - theta^m|| stopping threshold
     trust: float = 1.0           # max trust-region radius per point [m] (None = off)
     trust0: float = 0.4          # initial radius [m]; the vmax*dt scale works well
@@ -345,7 +346,7 @@ def solve_inner_ocp(track, p_ego, q_traj, prm=Params(), theta0=None, alpha=0.0, 
         sigma = tN[0] / max(1.0 - kN[0] * latN[0], 0.1)     # eq. (18), clipped at the pole
         diff = q[1:] - p_m[1:]
         beta = diff / np.maximum(np.linalg.norm(diff, axis=1, keepdims=True), 1e-6)
-
+        # n·(p − τ) = n·p − n·τ
         Q.n.value, Q.ntau.value = nrm, np.sum(nrm * tau, axis=1)
         Q.wl.value, Q.wr.value = wl, wr
         Q.beta.value = beta
@@ -388,7 +389,7 @@ def solve_inner_ocp(track, p_ego, q_traj, prm=Params(), theta0=None, alpha=0.0, 
             r = min(2.0 * r, prm.trust)                # grow back after a good step
         log.append(dict(it=m, status=st_, ds=ds, step=step, trust=r, merit=new,
                         slack=float(np.sum(Q.st.value) + np.sum(Q.sc.value))))
-        if step < prm.tol or (m > 0 and abs(gain) < 1e-3):
+        if step < prm.tol or (m > 0 and abs(gain) < 1e-2):
             status = "converged"
             break
     else:
