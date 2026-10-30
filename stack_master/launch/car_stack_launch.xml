@@ -6,6 +6,9 @@
   <arg name="opponent_source" default="perception" description="gt / perception" />
   <arg name="opp_ns" default="" description="namespace of the other car, used when opponent_source=gt" />
   <arg name="speed_scale" default="1.0" />
+  <arg name="rival_speed_scale" default="1.0" />
+  
+
 
   <group>
     <push-ros-namespace namespace="$(var ns)" />
@@ -56,6 +59,8 @@
       <node pkg="ibr_planner" exec="ibr_planner" name="state_machine" output="screen">
         <param name="opp_ns" value="$(var opp_ns)" />
         <param name="rate_hz" value="20.0" />
+        <param name="speed_scale" value="$(var speed_scale)" />
+        <param name="opp_speed_scale" value="$(var rival_speed_scale)" />
       </node>
     </group>
   </group>

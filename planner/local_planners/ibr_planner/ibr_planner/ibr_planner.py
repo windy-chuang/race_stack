@@ -55,6 +55,7 @@ from nav_msgs.msg import Odometry
 from rclpy.duration import Duration
 from rclpy.node import Node
 from visualization_msgs.msg import Marker, MarkerArray
+from rcl_interfaces.msg import (FloatingPointRange, ParameterDescriptor, ParameterType, SetParametersResult)
 
 from f110_msgs.msg import Wpnt, WpntArray
 
@@ -73,7 +74,16 @@ class IBRPlanner(Node):
         self.dt = float(p("dt", 0.1).value)
         self.n_steps = int(p("n_steps", 15).value)
         self.opp_ns = str(p("opp_ns", "opp").value)
-        self.speed_scale = float(p("speed_scale", 0.5).value)
+        self.speed_scale = float(p("speed_scale", 0.5, ParameterDescriptor(
+            type=ParameterType.PARAMETER_DOUBLE,
+            floating_point_range=[FloatingPointRange(from_value=0.1, to_value=1.0, step=0.01)]
+        )).value)
+        self.opp_speed_scale = float(p("opp_speed_scale", 1.0, ParameterDescriptor(
+            type=ParameterType.PARAMETER_DOUBLE,
+            floating_point_range=[FloatingPointRange(from_value=0.1, to_value=1.0, step=0.01)]
+        )).value)
+
+
 
         self.n_ibr = int(p("n_game_iterations", 3).value)
         self.ibr_tol = float(p("ibr_tolerance", 2e-2).value)
@@ -120,6 +130,7 @@ class IBRPlanner(Node):
         self.create_subscription(WpntArray, "/global_waypoints_scaled", self.gb_cb, 10)
         self.create_subscription(Odometry, "car_state/odom", self.ego_cb, 10)
         self.create_subscription(Odometry, f"/{self.opp_ns}/car_state/odom", self.opp_cb, 10)
+        self.add_on_set_parameters_callback(self.param_cb)
         self.loc_pub = self.create_publisher(WpntArray, "local_waypoints", 10)
         self.marker_pub = self.create_publisher(MarkerArray, "ibr/markers", 10)
         self.create_timer(1.0 / self.rate_hz, self.loop)
@@ -151,7 +162,8 @@ class IBRPlanner(Node):
         if vmax_raw <= 0.0:
             return
         self.prm.vmax = vmax_raw * self.speed_scale     # ego drives the scaled line
-        self.prm_opp.vmax = vmax_raw                    # opponent drives the full line
+
+        self.prm_opp.vmax = vmax_raw * self.opp_speed_scale                  # opponent drives the full line
 
     def ego_cb(self, msg: Odometry):
         self.state[0] = (msg.pose.pose.position.x, msg.pose.pose.position.y)
@@ -160,6 +172,15 @@ class IBRPlanner(Node):
     def opp_cb(self, msg: Odometry):
         self.state[1] = (msg.pose.pose.position.x, msg.pose.pose.position.y)
         self.stamp[1] = self.get_clock().now()
+
+    def param_cb(self, params):
+        for param in params:
+            if param.name == "speed_scale":
+                self.speed_scale = param.value
+            elif param.name == "opp_speed_scale":
+                self.opp_speed_scale = param.value
+        return SetParametersResult(successful=True)
+
 
     # ------------------------------------------------------------------ main loop
     def _opp_is_fresh(self):
