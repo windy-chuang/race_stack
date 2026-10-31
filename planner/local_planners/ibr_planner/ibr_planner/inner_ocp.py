@@ -178,6 +178,7 @@ class Result:
     beta: np.ndarray = None      # (N,2) unit vectors ego -> opponent
     solve_time: float = 0.0
     log: list = field(default_factory=list)
+    s0g: float = 0.0
 
 
 # --------------------------------------------------------------------------- QCLP
@@ -289,16 +290,16 @@ def true_violations(track, p, q, prm, s_hint=None, window=None):
     return tv, cv, s
 
 
-def _merit(track, p, q, prm, s0, w_obj, window=None):
+def _merit(track, p, q, prm, s0, w_obj, window=None, gb=None, s0g=None):
     """L1 merit of the TRUE problem: -progress - sensitivity bonus + w * violations."""
     tv, cv, s = true_violations(track, p, q, prm, s0, window)
-    ds = track.ds_along(s0, s[-1])
+    ds = gb.ds_along(s0g, gb.project(p[-1], s0g, window))
     bonus = float(np.sum(w_obj * p[1:])) if w_obj is not None else 0.0
     return -ds - bonus + prm.merit_w * (max(tv, 0.0) + max(cv, 0.0)), ds
 
 
 # --------------------------------------------------------------------------- inner OCP
-def solve_inner_ocp(track, p_ego, q_traj, prm=Params(), theta0=None, alpha=0.0, mu=None):
+def solve_inner_ocp(track, p_ego, q_traj, prm=Params(), theta0=None, alpha=0.0, mu=None, gb=None, s_hint=None):
     """One best response: problem (16) for a single player, opponent trajectory fixed.
 
     p_ego  : (2,)      measured start position of this player
@@ -318,7 +319,9 @@ def solve_inner_ocp(track, p_ego, q_traj, prm=Params(), theta0=None, alpha=0.0, 
     q = np.asarray(q_traj, float)
     if q.shape != (N + 1, 2):
         raise ValueError(f"q_traj must be {(N + 1, 2)}, got {q.shape}")
+    gb = track if gb is None else gb
     s0 = track.project(p0)
+    s0g = gb.project(p0) if s_hint is None else gb.project(p0, s_hint, 3.0)
     # The window must reach past the far end of the horizon, or the projection of p^N gets
     # clamped to the window edge and the reported progress saturates.
     win = None if prm.proj_window is None else max(prm.proj_window, prm.umax * N + 1.0)
@@ -336,13 +339,13 @@ def solve_inner_ocp(track, p_ego, q_traj, prm=Params(), theta0=None, alpha=0.0, 
     Q.p0.value, Q.umax.value = p0, prm.umax
     Q.wobj.value, Q.sw.value = w_obj, prm.slack_w
 
-    cur, _ = _merit(track, p_m, q, prm, s0, w_merit, win)
+    cur, _ = _merit(track, p_m, q, prm, s0, w_merit, win, gb, s0g)
     mu_out, beta_out, log, status = np.zeros(N), beta_obj, [], "not_run"
 
     for m in range(prm.max_iter):
         # ---- linearise at p_m
         _, tau, _, nrm, _, _, wl, wr = track.frenet(p_m[1:], s0, win)
-        _, _, tN, _, kN, latN, _, _ = track.frenet(p_m[N:N + 1], s0, win)
+        _, _, tN, _, kN, latN, _, _ = gb.frenet(p_m[N:N + 1], s0g, win)
         sigma = tN[0] / max(1.0 - kN[0] * latN[0], 0.1)     # eq. (18), clipped at the pole
         diff = q[1:] - p_m[1:]
         beta = diff / np.maximum(np.linalg.norm(diff, axis=1, keepdims=True), 1e-6)
@@ -370,7 +373,7 @@ def solve_inner_ocp(track, p_ego, q_traj, prm=Params(), theta0=None, alpha=0.0, 
             break
 
         p_new = np.vstack([p0, np.asarray(Q.P.value)])
-        new, ds = _merit(track, p_new, q, prm, s0, w_merit, win)
+        new, ds = _merit(track, p_new, q, prm, s0, w_merit, win, gb, s0g)
         step = float(np.linalg.norm(p_new - p_m))
         if r is not None and new > cur + 1e-9 and step > prm.tol:
             r *= 0.5                                   # reject: the linearisation overshot
@@ -396,8 +399,8 @@ def solve_inner_ocp(track, p_ego, q_traj, prm=Params(), theta0=None, alpha=0.0, 
         status = "max_iter"
 
     tv, cv, s = true_violations(track, p_m, q, prm, s0, win)
-    return Result(p_m, np.diff(p_m, axis=0), track.ds_along(s0, s[-1]), status, len(log),
-                  tv, cv, mu_out, beta_out, time.perf_counter() - t_start, log)
+    return Result(p_m, np.diff(p_m, axis=0), gb.ds_along(s0g, gb.project(p_m[-1], s0g, win)), status, len(log),
+                  tv, cv, mu_out, beta_out, time.perf_counter() - t_start, log, s0g)
 
 
 # --------------------------------------------------------------------------- IBR
@@ -412,7 +415,7 @@ class IBRResult:
 
 
 def ibr(track, x1, x2, prm=Params(), alpha=(0.0, 0.0), n_ibr=2, tol=2e-2,
-        theta=(None, None), prm2=None, mu0=(None, None)):
+        theta=(None, None), prm2=None, mu0=(None, None), gb=None, s_hint=(None, None)):
     """Iterated best response (Fig. 2): alternate the two best responses.
 
         theta_1^l = argmax s_1 + alpha_1 sum_k mu_2^{k,l-1} beta_12^kT p_1^k   (theta_2 fixed)
@@ -438,7 +441,7 @@ def ibr(track, x1, x2, prm=Params(), alpha=(0.0, 0.0), n_ibr=2, tol=2e-2,
         for i in (0, 1):
             j = 1 - i
             r = solve_inner_ocp(track, x[i], th[j], P[i], theta0=th[i],
-                                alpha=alpha[i], mu=mu[j])
+                                alpha=alpha[i], mu=mu[j], gb=gb, s_hint=s_hint[i])
             d[i] = float(np.linalg.norm(r.p - th[i]))
             th[i], mu[i], res[i] = r.p, np.clip(r.mu, 0.0, P[i].mu_max), r
         hist.append(dict(l=l, d1=d[0], d2=d[1], s1=res[0].s_progress, s2=res[1].s_progress,
@@ -461,18 +464,28 @@ class RecedingHorizonIBR:
     """
 
     def __init__(self, track, prm, prm_opp=None, alpha=(1.0, 1.0), n_ibr=1, ibr_tol=2e-2,
-                 viol_tol=0.05, reset_dist=1.0):
+                 viol_tol=0.05, reset_dist=1.0, gb=None):
         self.track, self.prm = track, prm
+        self.gb = gb
         self.prm_opp = prm if prm_opp is None else prm_opp
         self.alpha, self.n_ibr, self.ibr_tol = alpha, n_ibr, ibr_tol
         self.viol_tol = viol_tol            # extra violation allowed before refusing [m]
         self.reset_dist = reset_dist        # drop the warm start if the car jumped [m]
         self.prev = [None, None]            # last published plans
         self.mu = [None, None]
+        self.s_gb = [None, None]
+        self.x_last = [None, None]
         self.ticks = self.rejects = 0
 
     def reset(self):
         self.prev, self.mu = [None, None], [None, None]
+
+    def _hint(self, i, x):
+        """Last tick's raceline s, or None if the car moved further than the hint can reach."""
+        if self.s_gb[i] is None or np.linalg.norm(x - self.x_last[i]) > 3.0:
+            return None
+        return self.s_gb[i]
+
 
     def _theta(self, i, x):
         """Previous plan shifted one step, or None if it is missing or stale."""
@@ -495,13 +508,17 @@ class RecedingHorizonIBR:
         x = [np.asarray(x_ego, float).ravel(), np.asarray(x_opp, float).ravel()]
         if q_opp is not None:
             r = solve_inner_ocp(self.track, x[0], np.asarray(q_opp, float), self.prm,
-                                theta0=self._theta(0, x[0]), alpha=0.0)
+                                theta0=self._theta(0, x[0]), alpha=0.0, gb=self.gb, s_hint=self._hint(0, x[0]))
             R = IBRResult([r.p, np.asarray(q_opp, float)], [r.mu, np.zeros(self.prm.N)],
                           True, r.solve_time, [], [r, r])
         else:
             R = ibr(self.track, x[0], x[1], self.prm, alpha=self.alpha, n_ibr=self.n_ibr,
                     tol=self.ibr_tol, theta=(self._theta(0, x[0]), self._theta(1, x[1])),
-                    prm2=self.prm_opp, mu0=tuple(self.mu))
+                    prm2=self.prm_opp, mu0=tuple(self.mu), gb=self.gb, s_hint=(self._hint(0, x[0]), self._hint(1, x[1])))
+
+        # R.res = [r, r] in the solo branch, so the opponent keeps no hint there.
+        self.s_gb = [R.res[0].s0g, None if q_opp is not None else R.res[1].s0g]
+        self.x_last = x
 
         # How badly does the MEASURED state already violate the constraints? A plan is not
         # rejected for inheriting a violation it cannot undo within one horizon.

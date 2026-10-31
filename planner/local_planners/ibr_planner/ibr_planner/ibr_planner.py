@@ -85,7 +85,7 @@ class IBRPlanner(Node):
 
 
 
-        self.n_ibr = int(p("n_game_iterations", 3).value)
+        self.n_ibr = int(p("n_game_iterations", 4).value)
         self.ibr_tol = float(p("ibr_tolerance", 2e-2).value)
         self.alpha = (float(p("alpha", 1.0).value), float(p("alpha_opp", 1.0).value))
         self.opp_timeout = float(p("opp_timeout", 0.5).value)
@@ -95,7 +95,7 @@ class IBRPlanner(Node):
         common = dict(
             N=self.n_steps, dt=self.dt, d_min=r_ego + r_opp,
             track_margin=float(p("track_margin", r_ego).value),
-            max_iter=int(p("n_sqp_iterations", 7).value),
+            max_iter=int(p("n_sqp_iterations", 6).value),
             tol=float(p("inner_tolerance", 1e-3).value),
             trust=float(p("trust_radius", 1.0).value),
             trust0=float(p("trust_radius0", 0.4).value),
@@ -118,6 +118,8 @@ class IBRPlanner(Node):
         self.track = None
         self.planner = None
         self.n_track_wpnts = 0
+        self.gb_track = None
+        self.n_gb_wpnts = 0
 
         # Canonicalise the convex subproblem now, not on the first planning tick.
         t0 = self.get_clock().now()
@@ -162,9 +164,13 @@ class IBRPlanner(Node):
         if vmax_raw <= 0.0:
             return
         self.prm.vmax = vmax_raw * self.speed_scale     # ego drives the scaled line
+        self.prm_opp.vmax = vmax_raw * self.opp_speed_scale # opponent drives the full line
+        if len(msg.wpnts) != self.n_gb_wpnts:
+            self.n_gb_wpnts = len(msg.wpnts)
+            self.gb_track = Track.from_wpnts(msg.wpnts)   # only used for s, never for widths
+            self.planner = None
 
-        self.prm_opp.vmax = vmax_raw * self.opp_speed_scale                  # opponent drives the full line
-
+    
     def ego_cb(self, msg: Odometry):
         self.state[0] = (msg.pose.pose.position.x, msg.pose.pose.position.y)
         self.stamp[0] = self.get_clock().now()
@@ -190,12 +196,13 @@ class IBRPlanner(Node):
         return age <= self.opp_timeout
 
     def loop(self):
-        if self.track is None or self.stamp[0] is None or self.prm.vmax <= 0.0:
+        if self.track is None or self.stamp[0] is None or self.prm.vmax <= 0.0 or self.gb_track is None:
             return
         if self.planner is None:
             self.planner = RecedingHorizonIBR(
                 self.track, self.prm, self.prm_opp, alpha=self.alpha,
-                n_ibr=self.n_ibr, ibr_tol=self.ibr_tol, viol_tol=self.viol_tol)
+                n_ibr=self.n_ibr, ibr_tol=self.ibr_tol, viol_tol=self.viol_tol,
+                gb=self.gb_track)
 
         state = self.state.copy()
         if self._opp_is_fresh():
@@ -237,11 +244,11 @@ class IBRPlanner(Node):
                 f"n_sqp_iterations", throttle_duration_sec=5.0)
 
         stamp = self.get_clock().now().to_msg()
-        self.publish_plan(out["plan"], stamp)
+        self.publish_plan(out["plan"], stamp, out["res"][0].s0g)
         self.publish_markers(out["plan"], plan_opp, stamp)
 
     # ------------------------------------------------------------------ output
-    def publish_plan(self, plan, stamp, ds=0.1):
+    def publish_plan(self, plan, stamp, s0g, ds=0.1):
         """Resample the plan to `ds` spacing and publish it with every Wpnt field filled.
 
         The controllers pick their lookahead point by INDEX, assuming 0.1 m between
@@ -266,16 +273,17 @@ class IBRPlanner(Node):
         kappa = np.gradient(np.unwrap(psi)) / ds
         ax = vx * np.gradient(vx) / ds                  # a = v dv/ds
 
-        # s/d are w.r.t. the centerline the planner's Track is built from.
+        # s/d are w.r.t. gb
         win = max(self.prm.proj_window, s[-1] + 1.0)
-        s_tr, _, _, _, _, lat, wl, wr = self.track.frenet(
+        _, _, _, _, _, lat, wl, wr = self.track.frenet(
             np.c_[x, y], self.track.project(plan[0]), win)
         m = self.track.margin                           # Track widths have the margin removed
+        s_gb, _, _, _, _, d_gb, _, _ = self.gb_track.frenet(np.c_[x, y], s0g, win)
 
         out = WpntArray()
         out.header.stamp = stamp
         out.header.frame_id = "map"
-        out.wpnts = [Wpnt(id=k, s_m=float(s_tr[k]), d_m=float(lat[k]),
+        out.wpnts = [Wpnt(id=k, s_m=float(s_gb[k]), d_m=float(d_gb[k]),
                           x_m=float(x[k]), y_m=float(y[k]),
                           d_left=float(wl[k] + m - lat[k]), d_right=float(wr[k] + m + lat[k]),
                           psi_rad=float(psi[k]), kappa_radpm=float(kappa[k]),
