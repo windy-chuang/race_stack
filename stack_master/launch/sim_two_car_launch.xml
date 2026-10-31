@@ -7,12 +7,22 @@
   <arg name="opponent_source" default="perception" description="gt / perception" />
   <arg name="ego_speed_scale" default="0.5" />
   <arg name="opp_speed_scale" default="0.5" />
+  <arg name="ego_s" default="0.0" description="ego start along the raceline [m]" />
+  <arg name="ego_d" default="0.0" description="ego offset from the raceline, left is positive [m]" />
+  <arg name="opp_s" default="2.0" description="opp start along the raceline [m]" />
+  <arg name="opp_d" default="0.0" description="opp offset from the raceline, left is positive [m]" />
+
   <let name="map_path" value="$(find-pkg-share stack_master)/maps/$(var map_name)" />
 
   <!-- shared -->
   <include file="$(find-pkg-share f1tenth_gym_ros)/launch/gym_bridge_launch.py">
     <arg name="map_yaml_path" value="$(var map_path)/$(var map_name).yaml" />
     <arg name="sim_config" value="$(find-pkg-share stack_master)/config/SIM/sim_two_car.yaml" />
+    <arg name="ego_s" value="$(var ego_s)" />
+    <arg name="ego_d" value="$(var ego_d)" />
+    <arg name="opp_s" value="$(var opp_s)" />
+    <arg name="opp_d" value="$(var opp_d)" />
+
   </include>
   <node pkg="stack_master" name="global_parameters" exec="global_parameter_node">
     <param name="racecar_version" value="SIM" />
