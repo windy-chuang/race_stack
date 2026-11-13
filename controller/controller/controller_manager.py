@@ -55,16 +55,16 @@ class Controller(Node):
 
 
         # Publishers
-        self.publish_topic = '/drive' # TODO adapt car topic name here
+        self.publish_topic = 'drive' # TODO adapt car topic name here
         self.drive_pub = self.create_publisher(AckermannDriveStamped, self.publish_topic, 10)
         self.steering_pub = self.create_publisher(Marker, 'steering', 10)
         self.lookahead_pub = self.create_publisher(Marker, 'lookahead_point', 10)
         self.trailing_pub = self.create_publisher(Marker, 'trailing_opponent_marker', 10)
         self.waypoint_pub = self.create_publisher(MarkerArray, 'my_waypoints', 10)
         self.l1_pub = self.create_publisher(Point, 'l1_distance', 10)
-        self.gap_data = self.create_publisher(PidData, '/trailing/gap_data', 10)
+        self.gap_data = self.create_publisher(PidData, 'trailing/gap_data', 10)
         # Publisher for steering and speed command
-        self.publish_topic = '/vesc/high_level/ackermann_cmd_mux/input/nav_1'
+        self.publish_topic = 'vesc/high_level/ackermann_cmd_mux/input/nav_1'
 
         self.track_length = None
         self.opponent = None
@@ -98,14 +98,14 @@ class Controller(Node):
 
         # Subscribers
         #self.create_subscription(Config, '/l1_param_tuner/parameter_updates',self.l1_params_cb) #l1 param tuning/updating
-        self.create_subscription(String,'/state',  self.state_cb, 10)
+        self.create_subscription(String,'state',  self.state_cb, 10)
         self.create_subscription(WpntArray,'/global_waypoints',  self.track_length_cb, 10)
-        self.create_subscription(ObstacleArray,'/perception/obstacles',  self.obstacle_cb, 10)
-        self.create_subscription(WpntArray,'/local_waypoints', self.local_waypoint_cb, 10) # waypoints (x, y, v, norm trackbound, s, kappa)
-        self.create_subscription(Odometry,'/car_state/odom',  self.odom_cb, 10) # car speed
-        self.create_subscription(PoseStamped,'/car_state/pose',  self.car_state_cb, 10) # car position (x, y, theta)
-        self.create_subscription(Odometry, '/car_state/frenet/odom',self.car_state_frenet_cb, 10) # car frenet coordinates
-        self.create_subscription(LaserScan, '/scan', self.scan_cb, 10) # lidar scan
+        self.create_subscription(ObstacleArray,'perception/obstacles',  self.obstacle_cb, 10)
+        self.create_subscription(WpntArray,'local_waypoints', self.local_waypoint_cb, 10) # waypoints (x, y, v, norm trackbound, s, kappa)
+        self.create_subscription(Odometry,'car_state/odom',  self.odom_cb, 10) # car speed
+        self.create_subscription(PoseStamped,'car_state/pose',  self.car_state_cb, 10) # car position (x, y, theta)
+        self.create_subscription(Odometry, 'car_state/frenet/odom',self.car_state_frenet_cb, 10) # car frenet coordinates
+        self.create_subscription(LaserScan, 'scan', self.scan_cb, 10) # lidar scan
 
         # Block until relevant data is here
         self.wait_for_messages()
@@ -216,7 +216,7 @@ class Controller(Node):
             self.l1_params = yaml.safe_load(f)
             self.l1_params = self.l1_params['controller']['ros__parameters']
 
-        self.create_subscription(Imu,'/vesc/sensors/imu/raw', self.imu_cb, 10) # acceleration subscriber for steer change
+        self.create_subscription(Imu,'vesc/sensors/imu/raw', self.imu_cb, 10) # acceleration subscriber for steer change
         self.acc_now = np.zeros(10) # rolling buffer for acceleration
 
         self.map_controller = MAP_Controller(
@@ -252,7 +252,7 @@ class Controller(Node):
 
         # get wheelbase
         if self.sim:
-            config_path = os.path.join(stack_master_path, 'config', self.racecar_version, 'car_model.yaml')
+            config_path = os.path.join(stack_master_path, 'config', self.racecar_version, 'sim_params.yaml')
             with open(config_path, 'r') as f:
                 car_params = yaml.safe_load(f)
                 self.wheelbase = car_params['lr'] + car_params['lf']
@@ -263,7 +263,7 @@ class Controller(Node):
                 self.wheelbase = car_params['vesc_to_odom_node']['ros__parameters']['wheelbase']
         
 
-        self.create_subscription(Imu,'/vesc/sensors/imu/raw', self.imu_cb, 10) # acceleration subscriber for steer change
+        self.create_subscription(Imu,'vesc/sensors/imu/raw', self.imu_cb, 10) # acceleration subscriber for steer change
         self.acc_now = np.zeros(10) # rolling buffer for acceleration
 
         self.pp_controller = PP_Controller(
@@ -312,23 +312,23 @@ class Controller(Node):
 
 
 
-    def get_remote_parameter(self, remote_node_name, param_name):
-        cli = self.create_client(GetParameters, remote_node_name + '/get_parameters')
-        while not cli.wait_for_service(timeout_sec=1):
-            self.get_logger().info('service not available, waiting again...')
-        req = GetParameters.Request()
-        req.names = [param_name]
-        future = cli.call_async(req)
+    # def get_remote_parameter(self, remote_node_name, param_name):
+    #     cli = self.create_client(GetParameters, remote_node_name + '/get_parameters')
+    #     while not cli.wait_for_service(timeout_sec=1):
+    #         self.get_logger().info('service not available, waiting again...')
+    #     req = GetParameters.Request()
+    #     req.names = [param_name]
+    #     future = cli.call_async(req)
 
-        while rclpy.ok():
-            rclpy.spin_once(self)
-            if future.done():
-                try:
-                    res = future.result()
-                    return getattr(res.values[0], self.type_arr[res.values[0].type])
-                except Exception as e:
-                    self.get_logger().warn('Service call failed %r' % (e,))
-                break
+    #     while rclpy.ok():
+    #         rclpy.spin_once(self)
+    #         if future.done():
+    #             try:
+    #                 res = future.result()
+    #                 return getattr(res.values[0], self.type_arr[res.values[0].type])
+    #             except Exception as e:
+    #                 self.get_logger().warn('Service call failed %r' % (e,))
+    #             break
 
 
     #############
@@ -424,6 +424,16 @@ class Controller(Node):
         rot_euler = rot.as_euler('xyz', degrees=False)
         theta = rot_euler[2]
         self.position_in_map = np.array([x, y, theta])[np.newaxis]
+
+    def car_state_cb(self, data: PoseStamped):
+        x = data.pose.position.x
+        y = data.pose.position.y
+        rot = Rotation.from_quat([data.pose.orientation.x, data.pose.orientation.y,
+                                  data.pose.orientation.z, data.pose.orientation.w])
+        rot_euler = rot.as_euler('xyz', degrees=False)
+        theta = rot_euler[2]
+        self.position_in_map = np.array([x, y, theta])[np.newaxis]
+
 
     def local_waypoint_cb(self, data: WpntArray):
         self.waypoint_list_in_map = []
@@ -650,7 +660,7 @@ class Controller(Node):
         self.lookahead_pub.publish(lookahead_marker)
 
     def visualize_trailing_opponent(self):
-        if(self.state == "TRAILING" and (self.opponent is not None)):
+        if(self.state == "StateType.TRAILING" and (self.opponent is not None)):
             on = True
         else:
             on = False
