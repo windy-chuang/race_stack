@@ -3,6 +3,7 @@ from rclpy.node import Node
 import tf2_ros
 
 from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry
 
 
 class Carstate(Node):
@@ -17,7 +18,13 @@ class Carstate(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         self.pose_pub = self.create_publisher(PoseStamped, '/car_state/pose', 10)
+        self.ekf_odom = None
+        self.create_subscription(Odometry, '/state_estimation/odom', self.ekf_odom_cb, 10)
+        self.odom_pub = self.create_publisher(Odometry, '/car_state/odom', 10)
         self.create_timer(1.0 / self.get_parameter('rate_hz').value, self.publish_pose)
+    
+    def ekf_odom_cb(self, msg):
+        self.ekf_odom = msg
 
     def publish_pose(self):
         try:
@@ -32,6 +39,16 @@ class Carstate(Node):
         msg.pose.position.z = trans.transform.translation.z
         msg.pose.orientation = trans.transform.rotation
         self.pose_pub.publish(msg)
+        if self.ekf_odom is None:
+            self.get_logger().warn("no /state_estimation/odom yet", throttle_duration_sec=1.0)
+            return
+        odom = Odometry()
+        odom.header = trans.header          # frame_id 'map', TF stamp
+        odom.child_frame_id = 'base_link'
+        odom.pose.pose = msg.pose           # map-frame pose you just built
+        odom.twist.twist = self.ekf_odom.twist.twist
+        self.odom_pub.publish(odom)
+
 
 
 def main():
