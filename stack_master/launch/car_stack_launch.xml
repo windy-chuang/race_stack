@@ -1,7 +1,8 @@
 <launch>
-  <arg name="ns" description="Car namespace, e.g. ego / opp" />
+  <arg name="ns" default="" description="Car namespace, e.g. ego / opp; empty on the real car" />
   <arg name="planner" default="spliner" description="spliner / ibr / none" />
   <arg name="ctrl_algo" default="PP" description="MAP / PP" />
+  <arg name="LU_table" default="NUC5_hangar_pacejka" description="steering lookup table, MAP only; match your car" />
   <arg name="map_name" default="latest" />
   <arg name="opponent_source" default="perception" description="gt / perception" />
   <arg name="opp_ns" default="" description="namespace of the other car, used when opponent_source=gt" />
@@ -27,20 +28,27 @@
   <group>
     <push-ros-namespace namespace="$(var ns)" />
 
-    <!-- per-car: car_state/odom -> car_state/frenet/odom -->
-    <include file="$(find-pkg-share frenet_odom_republisher)/launch/frenet_odom_republisher_launch.xml" />
+    <!-- Per-car copies, needed only in the sim. On the real car (ns='') base_system
+      already runs these at the root namespace. -->
+    <group if="$(eval '\'$(var ns)\' != \'\'')">
+      <!-- per-car: car_state/odom -> car_state/frenet/odom -->
+      <include file="$(find-pkg-share frenet_odom_republisher)/launch/frenet_odom_republisher_launch.xml" />
 
-    <!-- per-car: state_machine now calls the relative 'ot_interpolator/get_parameters' -->
-    <node pkg="sector_tuner" name="ot_interpolator" exec="ot_interpolator">
-      <param name="map_name" value="$(var map_name)" />
-      <param from="$(find-pkg-share stack_master)/maps/$(var map_name)/ot_sectors.yaml" />
-    </node>
+      <!-- per-car: state_machine now calls the relative 'ot_interpolator/get_parameters' -->
+      <node pkg="sector_tuner" name="ot_interpolator" exec="ot_interpolator">
+        <param name="map_name" value="$(var map_name)" />
+        <param from="$(find-pkg-share stack_master)/maps/$(var map_name)/ot_sectors.yaml" />
+      </node>
+    </group>
+
 
     <include file="$(find-pkg-share controller)/launch/controller_launch.xml">
       <arg name="mode" value="$(var ctrl_algo)" />
+      <arg name="LU_table" value="$(var LU_table)" />
       <arg name="speed_limit" value="$(var speed_limit)" />
       <arg name="time_scale" value="$(var time_scale)" />
     </include>
+
 
     <group unless="$(eval '\'$(var planner)\' in [\'gb\', \'ibr\',  \'mpc\', \'mirror\']')">
       <include file="$(find-pkg-share state_machine)/launch/state_machine_launch.xml">

@@ -154,7 +154,9 @@ class IBRPlanner(Node):
         self.create_subscription(WpntArray, "/centerline_waypoints", self.centerline_cb, 10)
         self.create_subscription(WpntArray, "/global_waypoints_scaled", self.gb_cb, 10)
         self.create_subscription(Odometry, "car_state/odom", self.ego_cb, 10)
-        self.create_subscription(Odometry, f"/{self.opp_ns}/car_state/odom", self.opp_cb, 10)
+        if self.opp_ns:
+            self.create_subscription(Odometry, f"/{self.opp_ns}/car_state/odom", self.opp_cb, 10)
+
         self.add_on_set_parameters_callback(self.param_cb)
         self.loc_pub = self.create_publisher(WpntArray, "local_waypoints", 10)
         self.marker_pub = self.create_publisher(MarkerArray, "ibr/markers", 10)
